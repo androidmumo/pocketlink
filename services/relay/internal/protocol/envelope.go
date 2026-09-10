@@ -38,6 +38,18 @@ func DecodeControl(data []byte) (Envelope, error) {
 	if err := uniqueJSON(data); err != nil {
 		return e, ErrInvalid
 	}
+	// encoding/json accepts case-insensitive struct keys; v1 requires exact keys.
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return e, ErrInvalid
+	}
+	for key := range fields {
+		switch key {
+		case "version", "type", "request_id", "namespace", "room_id", "payload":
+		default:
+			return e, ErrInvalid
+		}
+	}
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&e); err != nil {

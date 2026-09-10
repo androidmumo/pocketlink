@@ -59,6 +59,8 @@ func TestMalformedControl(t *testing.T) {
 	valid := `{"version":1,"type":"hello","request_id":"r1","namespace":"intercom","payload":{}}`
 	for _, wire := range []string{
 		valid + valid,
+		strings.Replace(valid, `"version":1`, `"Version":1`, 1),
+		strings.Replace(valid, `"version":1`, `"version":1,"VERSION":1`, 1),
 		strings.Replace(valid, `"version":1`, `"version":1,"version":1`, 1),
 		strings.Replace(valid, `"payload":{}`, `"payload":{"a":1,"a":2}`, 1),
 		strings.Replace(valid, `"payload":{}`, `"payload":null`, 1),

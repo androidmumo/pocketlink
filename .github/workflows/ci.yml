@@ -107,7 +107,7 @@ jobs:
         with:
           images: ${{ steps.identity.outputs.name }}
           tags: |
-            type=raw,value=edge,enable={{is_default_branch}}
+            type=raw,value=edge,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,format=long
             type=match,pattern=relay/v(.*),group=1
           flavor: latest=false
