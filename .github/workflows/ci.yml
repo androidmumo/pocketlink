@@ -41,9 +41,12 @@ jobs:
       - name: Compile and verify protected layout
         shell: bash
         run: |
+          lock_checksum="$(mktemp)"
+          trap 'rm -f "$lock_checksum"' EXIT
+          sha256sum firmware/apps/board-check/dependencies.lock > "$lock_checksum"
           source /opt/esp/idf/export.sh
           ./tools/validate.sh --firmware
-          git diff --exit-code -- firmware/apps/board-check/dependencies.lock
+          sha256sum --check "$lock_checksum"
           cd dist/firmware/board-check
           sha256sum FoloToy-AI-Passport-full.bin > SHA256SUMS
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
