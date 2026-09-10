@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+**/node_modules
+**/build
+**/dist
+**/managed_components
+**/sdkconfig
+**/*.db
+**/*.db-*
+**/*.pem
+**/*.key
+.local

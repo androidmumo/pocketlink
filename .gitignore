@@ -1,0 +1,20 @@
+# Generated files and local credentials
+.env
+.env.*
+!.env.example
+!env.example
+*.pem
+*.key
+*.db
+*.db-*
+*.sqlite*
+.DS_Store
+**/__pycache__/
+**/node_modules/
+**/managed_components/
+**/sdkconfig
+**/sdkconfig.old
+**/build/
+**/dist/
+.local/
+coverage.out

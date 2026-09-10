@@ -1,0 +1,47 @@
+{
+  "control": [
+    {
+      "name": "hello-v1",
+      "valid": true,
+      "wire": {
+        "version": 1,
+        "type": "hello",
+        "request_id": "r1",
+        "namespace": "intercom",
+        "payload": {
+          "protocol_versions": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "name": "unsupported-version",
+      "valid": false,
+      "wire": {
+        "version": 2,
+        "type": "hello",
+        "request_id": "r1",
+        "namespace": "intercom",
+        "payload": {}
+      }
+    }
+  ],
+  "realtime": [
+    {
+      "name": "voice-independent-block",
+      "hex": "504c0101000000010000000100000000000000000000014000c800040000000000000000",
+      "valid": true
+    },
+    {
+      "name": "reserved-flags-rejected",
+      "hex": "504c0101000000010000000100000000000000000000014000c800040000000100000000",
+      "valid": false
+    },
+    {
+      "name": "truncated",
+      "hex": "504c010100000001000000010000000000000000",
+      "valid": false
+    }
+  ]
+}
