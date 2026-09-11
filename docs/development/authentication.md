@@ -1,85 +1,70 @@
-English | [简体中文](authentication.zh_CN.md)
+简体中文 | [English](authentication.en.md)
 
-# Device authentication increment (P2a)
+# 设备鉴权增量（P2a）
 
-P0/P1 artifacts have passed CI. P2a adds a single administrator and independent device
-credentials; it does not complete P2 rooms, text delivery, receipts or WebSocket sessions.
-The board-check image is unchanged. Production rollout remains deferred.
+P0/P1 产物已通过 CI。P2a 增加单管理员和独立设备凭证，尚未完成 P2 的房间、文字、回执
+和 WebSocket 会话。board-check 固件不变。体验环境已部署，详见 [README](../../README.md)。
 
-## Configuration
+## 配置
 
-Both settings are required to enable business endpoints and the embedded console:
+同时设置以下两项才启用业务接口与嵌入式管理页：
 
-| Setting | Contract |
+| 配置 | 约定 |
 | --- | --- |
-| `POCKETLINK_PUBLIC_ORIGIN` | Exact HTTPS origin, e.g. `https://pocketlink.example`; no trailing slash/path/query |
-| `POCKETLINK_ADMIN_PASSWORD_FILE` | Mounted file containing one 16..256-byte password line; optional final LF/CRLF |
+| `POCKETLINK_PUBLIC_ORIGIN` | 精确的 HTTPS 来源，如 `https://pocketlink.example`，不带尾斜杠、路径、查询 |
+| `POCKETLINK_ADMIN_PASSWORD_FILE` | 挂载的密码文件，一行 16..256 字节，允许结尾 LF/CRLF |
 
-Without both settings the service retains foundation mode. Partial or malformed
-configuration fails startup. The password file is read at startup only, never included
-in logs or passed in command arguments. Use a long unique random password. Rotate the
-file and restart only this service to change it and invalidate every admin session.
+两项都未设置时保留基础模式；只设置一项或格式错误则拒绝启动。密码文件只在启动时读取，
+不进入日志或命令参数。使用独立的长随机密码。更改文件后强制重新创建本服务容器，以重新挂载密码文件并清除所有管理会话，命令见 README。
 
-The HTTP backend must remain on the loopback interface or an isolated proxy network.
-Terminate TLS at the dedicated reverse proxy. Do not expose the backend port publicly.
-No forwarded headers are trusted. The configured Origin is checked exactly on browser
-mutations, even when the reverse proxy rewrites Host. No CORS access is enabled.
-Device clients must validate the TLS certificate and hostname. This increment does
-not establish or modify the proxy, certificate, DNS or production server.
+HTTP 后端只能通过回环地址或独立代理网络访问，TLS 在专属反向代理终止，不公开后端端口。
+不信任任何转发头。浏览器修改请求必须精确匹配配置的 Origin，即使代理重写 Host 也如此。
+不开放 CORS。设备必须校验证书和域名。本次不创建或修改代理、证书、DNS、生产服务器。
 
-`deploy/compose.auth.yaml` is an optional Compose override. Set `POCKETLINK_ADMIN_SECRET_SOURCE`
-to a file outside the checkout that container UID 65532 can read, and supply the HTTPS
-origin. Compose mounts the file read-only; source file permissions must be set explicitly
-because local bind-backed secrets do not remap ownership. Keep parent directories private.
-Validate the merged configuration before any later deployment:
+`deploy/compose.auth.yaml` 是可选 Compose 覆盖文件。把 `POCKETLINK_ADMIN_SECRET_SOURCE`
+设为仓库外、容器 UID 65532 可读的文件，并提供 HTTPS 来源。Compose 只读挂载该文件；
+本地绑定式 secret 不映射所有者，因此必须显式设置源文件权限，并保护其父目录。
+未来部署前先验证合并配置：
 
 ```bash
 docker compose --env-file /opt/pocketlink/.env -p pocketlink-prod \
   -f deploy/compose.yaml -f deploy/compose.auth.yaml config --quiet
 ```
 
-## API
+## 接口
 
-JSON request bodies require `Content-Type: application/json` and are capped at 4096 bytes.
-Errors contain stable generic codes, never SQL details or credential values.
+JSON 请求需要 `Content-Type: application/json`，请求体最多 4096 字节。
+错误只包含稳定的通用错误码，不返回 SQL 或凭证内容。
 
-| Method/path | Credential | Request/result |
+| 方法/路径 | 凭证 | 请求/结果 |
 | --- | --- | --- |
-| `POST /api/v1/auth/login` | Password + exact Origin | `{password}`; sets session cookie |
-| `GET /api/v1/auth/me` | Admin cookie | Login state |
-| `POST /api/v1/auth/logout` | Admin cookie + Origin | Invalidates current session |
-| `POST /api/v1/pairings` | Admin cookie + Origin | `{name}`; returns `{code, expires_at}` |
-| `GET /api/v1/devices` | Admin cookie | `{devices}` including revoked status; no hashes/secrets |
-| `DELETE /api/v1/devices/{id}` | Admin cookie + Origin | Immediately revokes credential; idempotent for known ID |
-| `POST /api/v1/device/pair` | One-time code; no browser Origin | `{code, sn}`; returns `{device, credential}` once |
-| `GET /api/v1/device/me` | `Authorization: Bearer <credential>` | Current active device identity |
+| `POST /api/v1/auth/login` | 密码与精确 Origin | `{password}`，设置会话 Cookie |
+| `GET /api/v1/auth/me` | 管理 Cookie | 登录状态 |
+| `POST /api/v1/auth/logout` | 管理 Cookie 与 Origin | 注销当前会话 |
+| `POST /api/v1/pairings` | 管理 Cookie 与 Origin | `{name}`，返回 `{code, expires_at}` |
+| `GET /api/v1/devices` | 管理 Cookie | `{devices}`，包含撤销状态，不含密钥或摘要 |
+| `DELETE /api/v1/devices/{id}` | 管理 Cookie 与 Origin | 立即撤销；对已知 ID 可重复调用 |
+| `POST /api/v1/device/pair` | 一次性码，无浏览器 Origin | `{code, sn}`，仅当次返回 `{device, credential}` |
+| `GET /api/v1/device/me` | `Authorization: Bearer <credential>` | 当前有效的设备身份 |
 
-An administrator session cannot authorize a device endpoint; a device token cannot
-administer devices. Session cookies are Secure, HttpOnly, SameSite=Strict and host-only,
-with a 12-hour lifetime. At most 32 sessions are retained in memory; restart logs them out.
-PBKDF2-HMAC-SHA256 uses a random startup salt and 600,000 iterations. Password verification
-is limited to one concurrent operation. Login and device pairing share a global limit
-of 20 attempts/minute, independent of spoofable proxy/client-IP headers. This deliberately
-favors a small private deployment; an attacker can temporarily exhaust this shared quota.
+管理 Cookie 不能作为设备凭证，设备密钥不能执行管理操作。Cookie 为 Secure、HttpOnly、
+SameSite=Strict 且只对当前主机有效，12 小时过期。内存中最多保留 32 个会话，重启后需重新登录。
+密码校验使用随机启动盐和 600,000 次 PBKDF2-HMAC-SHA256，最多同时执行一次。
+登录与设备配对共用每分钟 20 次的全局限额，不依赖可伪造的代理/IP 请求头。该方案针对小型私有服务，
+攻击者可能暂时耗尽共享配额。
 
-Pairing codes and device tokens contain 256 random bits. SQLite stores their SHA-256
-digests only. Pairing codes expire after 10 minutes and are consumed atomically. Maximum
-32 unexpired codes, 256 active devices and 1024 retained distinct serials. Device names
-are 1..40 Unicode characters without controls. SN is an identifier, not a secret:
-1..64 ASCII letters/digits plus dot, underscore, colon or hyphen, starting with a letter/digit.
+配对码和设备密钥都包含 256 位随机数，SQLite 只保存 SHA-256 摘要。配对码 10 分钟过期且
+在事务中消费。最多 32 个有效配对码、256 台有效设备、1024 个保留的不同序列号。
+名称为 1..40 个 Unicode 字符，不含控制字符。SN 只是标识而非秘密，允许 1..64 个 ASCII
+字母、数字、点、下划线、冒号、连字符，首字符必须是字母或数字。
 
-An active SN cannot be silently replaced. Revoke it before re-pairing; re-pairing retains
-its ID and replaces the credential. If the pair response is lost, the consumed code cannot
-recover the secret: revoke the listed device and generate another pairing code. Admins
-must protect displayed pairing codes. Device tokens have no automatic expiry in this
-increment; revoke and re-pair to rotate them. No credential is placed in a URL.
+不能静默覆盖有效 SN。先撤销再重新配对，保留设备 ID 并替换密钥。若配对响应丢失，已消费的
+配对码不能恢复密钥：在列表中撤销该设备并生成新码。管理员需保护页面展示的配对码。
+本增量中设备密钥不自动过期，通过撤销和重新配对轮换。任何凭证都不放入 URL。
 
-## Verification and remaining work
+## 验证及待完成事项
 
-Host tests cover origin checks, session expiry/logout, role isolation, bounded requests,
-concurrent single-use exchange, expiry, quotas, revocation, re-pairing and SQLite reopen.
-Process smoke checks also exercise configured mode and restart behavior. UI assets are
-embedded and checked by HTTP tests and JavaScript syntax validation. These checks do not
-prove browser interaction, TLS proxy setup, physical device storage or end-to-end pairing.
-Migration 002 adds devices/pairings; an older image rejects the newer database. Retain a
-consistent pre-upgrade backup before a future production migration.
+主机测试覆盖来源检查、会话过期和退出、角色隔离、请求大小、并发单次配对、过期、限额、撤销、
+重新配对与 SQLite 重开。真实进程测试还检查启用配置和重启行为。页面资源通过嵌入资源 HTTP 测试
+和 JavaScript 语法检查；这些不证明浏览器交互、TLS 代理配置、真机存储或端到端配对。
+迁移 002 新增设备和配对表，旧镜像拒绝打开新数据库。未来生产升级前须保留一致的升级前备份。

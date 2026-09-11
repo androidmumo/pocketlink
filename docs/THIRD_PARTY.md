@@ -1,13 +1,11 @@
-English | [简体中文](THIRD_PARTY.zh_CN.md)
+简体中文 | [English](THIRD_PARTY.en.md)
 
-# Third-party notices
+# 第三方声明
 
-AI Passport source, baseline configuration, UI math tests, firmware verifier and
-its tests were imported from FoloToy under MIT. The original copyright and license
-are preserved in [LICENSE](../firmware/boards/ai_passport/LICENSE).
-Import provenance is in [upstream.json](../firmware/boards/ai_passport/upstream.json).
-The verifier tests only change their repository-root lookup after relocation.
+AI Passport 源码、基线配置、UI 数学测试、固件校验器及其测试从 FoloToy 按 MIT 导入。
+原版权和许可保留在 [LICENSE](../firmware/boards/ai_passport/LICENSE)。
+导入来源见 [upstream.json](../firmware/boards/ai_passport/upstream.json)。
+校验器测试仅为适应新位置调整了仓库根目录查找。
 
-Go dependencies are recorded in `services/relay/go.mod` and `go.sum`; ESP-IDF
-Managed Components are recorded in the board-check manifest/lock. Their original
-licenses apply. No new project-wide license grant is implied by these notices.
+Go 依赖记录在 `services/relay/go.mod`、`go.sum`；ESP-IDF 托管组件记录在 board-check
+清单及锁文件，各自原许可证仍适用。本文不代表授予新的项目整体许可证。

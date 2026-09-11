@@ -1,77 +1,66 @@
-English | [简体中文](README.zh_CN.md)
+简体中文 | [English](README.en.md)
 
-# PocketLink protocol v1 draft
+# PocketLink 协议 v1 草案
 
-Status: envelope and real-time frame parsers plus shared vectors are implemented.
-Transport handshakes and business handlers are scheduled for P2-P5. Do not treat
-this specification as an available relay endpoint. Breaking changes before the
-first device release require synchronized vectors and parsers.
+状态：已实现信封和实时帧解析器及共享向量。传输握手与业务处理安排在 P2-P5。
+本文不代表中转接口已可用。首个设备版本发布前，破坏性变化必须同步修改向量和解析器。
 
-## Control envelope
+## 控制信封
 
-A WSS text message is UTF-8 JSON, at most 8192 bytes and at most 16 nested
-containers. Reject duplicate keys, trailing values, unknown envelope fields,
-invalid UTF-8, unsupported versions and non-object payloads. Identifiers match
-`[a-zA-Z0-9][a-zA-Z0-9._:-]{0,63}`.
+WSS 文本消息使用 UTF-8 JSON，最多 8192 字节、最多 16 层嵌套容器。
+拒绝重复键、尾随值、未知信封字段、非法 UTF-8、不支持的版本及非对象载荷。
+标识符匹配 `[a-zA-Z0-9][a-zA-Z0-9._:-]{0,63}`。
 
 ```json
 {"version":1,"type":"hello","request_id":"r1","namespace":"intercom","payload":{"protocol_versions":[1]}}
 ```
 
-Required fields are `version`, `type`, `request_id`, `namespace`, `payload`.
-`room_id` is optional and required by future room handlers. The session supplies
-sender identity, never a client `sender_id`. Payload validation belongs to each
-handler; syntactic acceptance is not authorization or a known message type.
+必填字段为 `version`、`type`、`request_id`、`namespace`、`payload`。
+`room_id` 可选，未来房间处理器按业务要求校验。发送者身份来自会话，不接受客户端 `sender_id`。
+载荷由各处理器校验；语法通过不等于获得权限，也不代表已知消息类型。
 
-Future control types: `hello`, `auth`, `room.join`, `text.send`, `text.ack`,
-`text.read`, `ptt.request`, `ptt.granted`, `ptt.release`, `stream.open`, `error`.
-Responses echo request IDs; durable messages use server IDs and stable per-sender
-idempotency keys in their payload. Reliable traffic has database-backed delivery
-state; transient packets never acquire durability by setting a client flag.
+预留控制类型：`hello`、`auth`、`room.join`、`text.send`、`text.ack`、`text.read`、
+`ptt.request`、`ptt.granted`、`ptt.release`、`stream.open`、`error`。
+响应回传请求 ID；持久消息在载荷中携带服务端 ID 和发送者范围内稳定的幂等键。
+可靠消息以数据库保存投递状态，临时数据不能通过客户端标志要求持久化。
 
-Error codes reserved for handlers: `unsupported_version`, `invalid_message`,
-`unauthenticated`, `forbidden`, `rate_limited`, `room_busy`, `stream_expired`,
-`payload_too_large`, `temporarily_unavailable`. Errors never echo credentials.
+预留业务错误码：`unsupported_version`、`invalid_message`、`unauthenticated`、`forbidden`、
+`rate_limited`、`room_busy`、`stream_expired`、`payload_too_large`、`temporarily_unavailable`。
+错误不得回显凭证。
 
-Text limits: 1-200 Unicode code points and at most 2048 UTF-8 bytes; reject
-C0 control characters except newline/tab, and reject DEL. Glyph availability is a
-separate UI constraint. User text is plain text, not HTML.
+文字限制：1-200 个 Unicode 码点，且不超过 2048 个 UTF-8 字节；拒绝换行和 Tab 以外的
+C0 控制字符，以及 DEL。字库覆盖属于另一项界面约束。文字按纯文本处理，不按 HTML 渲染。
 
-## Real-time frame
+## 实时帧
 
-All integers use network byte order. One frame occupies one DTLS application
-record or one binary WSS message. The **plaintext** frame is at most 1100 bytes;
-implementation must also cap the final UDP payload at 1200 bytes after negotiated
-DTLS overhead. No application fragmentation. Drop oversize input before allocation.
+整数使用网络字节序。一帧对应一个 DTLS 应用记录或一条二进制 WSS 消息。
+**明文**帧最多 1100 字节；实现还需根据协商出的 DTLS 开销，确保最终 UDP 载荷不超过
+1200 字节。不做应用层分片，在分配内存前拒绝超长输入。
 
-| Offset | Bytes | Field |
+| 偏移 | 字节数 | 字段 |
 | --- | --- | --- |
 | 0 | 2 | ASCII `PL` |
-| 2 | 1 | Version: 1 |
-| 3 | 1 | Kind: 1 audio, 2 game state |
-| 4 | 4 | Nonzero server-issued stream ID |
-| 8 | 4 | Nonzero epoch |
-| 12 | 4 | Sequence, starting at 0 |
-| 16 | 8 | Audio sample timestamp; game ticks negotiated per stream |
-| 24 | 2 | Nonzero TTL in milliseconds |
-| 26 | 2 | Payload length, 1-1068 bytes, exact match |
-| 28 | 2 | Flags, zero in v1 |
-| 30 | 2 | Reserved, zero |
-| 32 | variable | Opaque codec or game bytes |
+| 2 | 1 | 版本：1 |
+| 3 | 1 | 类型：1 音频，2 游戏状态 |
+| 4 | 4 | 服务端分配的非零流 ID |
+| 8 | 4 | 非零代次 epoch |
+| 12 | 4 | 从 0 开始的序号 |
+| 16 | 8 | 音频采样时间戳；游戏 tick 按流协商 |
+| 24 | 2 | 非零 TTL，毫秒 |
+| 26 | 2 | 载荷长度，1-1068 字节，必须精确匹配 |
+| 28 | 2 | 标志，v1 为零 |
+| 30 | 2 | 保留，为零 |
+| 32 | 可变 | 编码或游戏字节 |
 
-The session/stream registry binds identity, room, codec, epoch, PTT grant and
-server-approved TTL ceiling. The parser alone does not enforce these bindings.
-Sequences may not wrap within an epoch; allocate a new epoch beforehand. Replays,
-old epochs and packets without a valid lease must be rejected by the live handler.
-TTL is not a wall-clock timestamp: receiver playback scheduling derives from
-sample timestamps and a bounded local monotonic-clock jitter buffer. The sender
-and relay drop queued frames older than their own enqueue time plus allowed TTL;
-receivers drop frames missing playback deadlines. Remote wall clocks are not
-trusted to measure one-way network delay.
+会话和流注册表绑定身份、房间、编码、代次、麦权及服务端允许的 TTL 上限。
+解析器本身不执行这些绑定校验。同一代次内序号不得回绕，回绕前分配新代次。
+实时处理器必须拒绝重放、旧代次和没有有效租约的数据。
+TTL 不是墙上时钟时间戳：接收端结合采样时间戳与有界单调时钟抖动缓冲安排播放。
+发送端和中转端根据各自入队时刻及允许 TTL 丢弃积压帧，接收端丢弃错过播放期限的帧。
+不信任远端时钟来计算网络单向延迟。
 
-The audio codec is negotiated per stream. Each ADPCM packet must carry predictor
-and step-index state so losing a packet cannot corrupt all subsequent packets.
-The test fixture carries opaque bytes; it does not certify a codec implementation.
+编码按流协商。每个 ADPCM 包必须携带预测值和步长索引，避免丢一包后持续解码错误。
+测试向量仅包含不透明字节，不能证明编码器已经实现。
 
-See [vectors.json](vectors.json). Go parser tests consume this same file; future
-firmware tests must consume equivalent fixtures before protocol changes ship.
+见 [vectors.json](vectors.json)。Go 解析器测试直接读取该文件；未来固件测试也必须验证
+等价向量，才能发布协议变更。

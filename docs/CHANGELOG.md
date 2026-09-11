@@ -1,13 +1,14 @@
-English | [简体中文](CHANGELOG.zh_CN.md)
+简体中文 | [English](CHANGELOG.en.md)
 
-# Changelog
+# 更新记录
 
-## Unreleased
+## 未发布
 
-- Add the PocketLink monorepo foundation and pinned AI Passport board-check demo.
-- Add validated relay configuration, atomic SQLite migrations, liveness/readiness,
-  capability reporting and graceful shutdown.
-- Add protocol v1 parsers, shared vectors and host tests.
-- Add isolated container configuration and gated image/firmware CI artifacts.
-- Add optional administrator login, single-use device pairing, persistent revocable credentials
-  and an embedded device management console. Text delivery and intercom remain pending.
+- 文档改为中文默认、英文切换，README 增加部署、使用、升级、备份恢复及故障排查教程。
+
+- 建立 PocketLink 单仓库底座，导入固定版本 AI Passport 硬件诊断演示。
+- 增加配置校验、SQLite 原子迁移、存活/就绪检查、能力描述及优雅退出。
+- 增加协议 v1 解析器、共享向量和主机测试。
+- 增加隔离容器配置及经检查的镜像/固件 CI 产物。
+- 增加可选管理员登录、一次性设备配对、持久化可撤销凭证和嵌入式设备管理页。
+  文字投递和对讲仍待实现。

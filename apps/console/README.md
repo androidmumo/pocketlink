@@ -1,18 +1,14 @@
-English | [简体中文](README.zh_CN.md)
+简体中文 | [English](README.en.md)
 
-# Device management console
+# 设备管理页
 
-The console provides administrator login/logout, one-time pairing code creation,
-device listing and credential revocation. It is a small embedded HTML/CSS/JavaScript
-application with no third-party frontend dependencies or external asset requests.
-The local Go module embeds source assets directly; relay builds include it through
-an explicit relative module replacement. No generated asset copies are checked in.
+管理页提供管理员登录/退出、生成一次性配对码、查看设备和撤销凭证。使用嵌入式
+HTML/CSS/JavaScript，无第三方前端依赖，不请求外部资源。独立的本地 Go 模块直接嵌入源码资源，
+服务端通过明确的相对模块替换引用，不提交重复的生成资源。
 
-The UI is served at `/` only when authentication is configured. It uses same-origin
-requests and an HttpOnly session cookie; credentials are never stored in localStorage.
-Device names and serials are rendered as text. A strict CSP disallows inline scripts.
-See [authentication](../../docs/development/authentication.md) for setup and API contracts.
+仅配置鉴权后才在 `/` 提供管理页。使用同源请求及 HttpOnly 会话 Cookie，不把凭证存入
+localStorage。设备名称和序列号以纯文本渲染；严格 CSP 禁止内联脚本。
+配置和接口约定见[鉴权说明](../../docs/development/authentication.md)。
 
-Rooms, text composition, delivery receipts and audio are still pending. The pairing
-code must later be transferred through the device configuration flow, not typed with
-three device buttons. No pairing firmware is included in this increment.
+房间、发送文字、回执和音频仍待实现。配对码将在后续设备配置流程传入，无需用三个按键输入。
+本次增量不包含设备配对固件。

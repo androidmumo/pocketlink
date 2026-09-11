@@ -1,21 +1,21 @@
-English | [简体中文](setup.zh_CN.md)
+简体中文 | [English](setup.en.md)
 
-# Development setup
+# 开发环境
 
-## Toolchains
+## 工具链
 
-- Go 1.26.8; install a checksum-verified archive from [Go downloads](https://go.dev/dl/).
-  `source tools/env.sh` also finds a user-local installation at
-  `$HOME/.local/share/pocketlink/go1.26.8/bin` without modifying shell startup files.
-- actionlint 1.7.12: `go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12`.
-  Add `$(go env GOPATH)/bin` to PATH.
-- Python 3.10+, a C compiler, Git, and Bash.
-- ESP-IDF 5.5.3 with ESP32-C3 tools for firmware. Activate its `export.sh`.
-- Docker Engine/Desktop plus Compose for local container testing. If unavailable,
-  GitHub Actions builds and smoke-tests the image; do not claim a local Docker test.
-- Node.js 24 is required for console JavaScript syntax checks.
+- Go 1.26.8；从 [Go 下载页](https://go.dev/dl/) 安装并校验摘要。
+  `source tools/env.sh` 也会发现 `$HOME/.local/share/pocketlink/go1.26.8/bin`
+  下的用户级安装，不修改 shell 启动文件。
+- actionlint 1.7.12：`go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12`。
+  将 `$(go env GOPATH)/bin` 加入 PATH。
+- Python 3.10+、C 编译器、Git、Bash。
+- 固件使用 ESP-IDF 5.5.3 与 ESP32-C3 工具，先激活其 `export.sh`。
+- 本地容器测试需要 Docker Engine/Desktop 和 Compose。不可用时由 GitHub Actions
+  构建和验证镜像，不得宣称通过本地 Docker 测试。
+- Node.js 24 用于管理页脚本语法检查。
 
-## Checks
+## 检查
 
 ```bash
 source tools/env.sh
@@ -25,43 +25,36 @@ source /path/to/esp-idf-v5.5.3/export.sh
 ./tools/validate.sh --all
 ```
 
-Static validation covers paired docs, pinned actions, protected defaults, C and
-Python firmware host tests, Go vet/race tests, protocol fixtures, and a real
-server startup/reopen/SIGTERM test. Firmware validation uses a fresh temporary
-build and sdkconfig, then verifies the merged image including partition MD5,
-application size and protected identity. Output: `dist/firmware/board-check/`.
-Generated build files, databases and secrets must not be committed.
+静态验证涵盖双语文档、固定 Action、受保护默认配置、C/Python 固件主机测试、Go vet/race
+测试、协议向量，以及真实服务启动、数据库重开和 SIGTERM 测试。
+固件验证使用临时构建目录和 sdkconfig，检查合并镜像、分区 MD5、应用大小与身份保护。
+产物位于 `dist/firmware/board-check/`。禁止提交生成物、数据库和密钥。
 
-SQLite dependency versions are pinned in `services/relay/go.mod` and `go.sum`.
-ESP-IDF Managed Components are pinned in `firmware/apps/board-check/dependencies.lock`.
-Review any regenerated dependency lock changes.
+SQLite 依赖固定在 `services/relay/go.mod` 和 `go.sum`。
+ESP-IDF 组件固定在 `firmware/apps/board-check/dependencies.lock`。重新生成锁文件后必须审查变化。
 
-## Local service configuration
+## 本地服务配置
 
-| Variable | Default | Validation |
+| 变量 | 默认值 | 校验 |
 | --- | --- | --- |
-| `POCKETLINK_LISTEN` | `127.0.0.1:8080` | Literal IP (or wildcard) and port 1-65535 |
-| `POCKETLINK_DATABASE` | `./data/relay.db` | File path, no SQLite URI or in-memory mode |
+| `POCKETLINK_LISTEN` | `127.0.0.1:8080` | IP 字面量或通配地址，端口 1-65535 |
+| `POCKETLINK_DATABASE` | `./data/relay.db` | 文件路径，不支持 SQLite URI 和内存模式 |
 | `POCKETLINK_LOG_LEVEL` | `info` | debug/info/warn/error |
 | `POCKETLINK_SHUTDOWN_TIMEOUT` | `10s` | 1s-1m |
 
-There is no automatic `.env` loader in the Go binary. Compose resolves deployment
-variables; shell runs use exported environment variables. The P1 process serves
-plain HTTP for local/reverse-proxy use, not direct public credentials or WSS.
+Go 程序不自动加载 `.env`。Compose 解析部署变量，shell 启动使用导出的环境变量。
+P1 程序提供本地或反向代理使用的 HTTP，不用于直接公开凭证接口或 WSS。
 
-## Release workflow
+## 发布流水线
 
-Use `codex/*` branches. CI runs on pull requests, main, codex branches, manual
-requests, and `relay/v*` or `firmware/board-check/v*` tags. All foundation gates run
-for now; path-based optimization can follow once shared dependencies are mapped.
-The image job waits for static and firmware gates, smoke-tests a native container,
-and publishes multi-architecture amd64/arm64 images only on main or relay tags.
-Main gets `edge` and a commit tag; relay tags get their version and commit tag.
-Firmware output and SHA256 are uploaded as CI artifacts, not automatically flashed.
-No workflow holds production SSH credentials or deploys production.
+使用 `codex/*` 分支。PR、main、codex 分支、手动请求、`relay/v*` 或
+`firmware/board-check/v*` 标签触发 CI。当前统一执行全部基础检查，后续明确共享依赖后再优化路径触发。
+镜像任务等待静态与固件检查通过，先测试本机架构容器；仅 main 或 relay 标签发布 amd64/arm64 镜像。
+main 生成 `edge` 及提交标签；relay 标签生成对应版本和提交标签。
+固件及 SHA256 作为 CI 附件上传，不自动刷机。
+流水线不保存生产 SSH 凭证，也不自动部署生产。
 
-## Device authentication
+## 设备鉴权
 
-See [authentication](authentication.md) to enable the console and device endpoints using
-an HTTPS origin and password file. Frontend assets are dependency-free and embedded directly;
-Node.js 24 is used for JavaScript syntax validation, not bundling.
+通过 HTTPS 来源和密码文件启用管理页及设备接口，见[鉴权说明](authentication.md)。
+前端无第三方依赖，直接嵌入源码资源；Node.js 24 用于 JavaScript 语法检查，无需打包工具。

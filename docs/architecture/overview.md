@@ -1,51 +1,40 @@
-English | [简体中文](overview.zh_CN.md)
+简体中文 | [English](overview.en.md)
 
-# Architecture and delivery stages
+# 架构与交付阶段
 
-One repository contains independently versioned applications. Browser apps live
-in `apps`, server processes in `services`, and independent ESP-IDF projects in
-`firmware/apps`. Future games follow their execution environment instead of
-mixing firmware and server source in a single games folder.
+一个仓库容纳独立版本的应用。网页位于 `apps`，服务进程位于 `services`，独立 ESP-IDF
+工程位于 `firmware/apps`。未来游戏按运行环境划分，不把固件和服务混在同一个 games 目录。
 
-The relay is a modular Go monolith. SQLite uses WAL, FULL synchronous mode,
-foreign keys, a five-second busy timeout, and one pooled connection. Migrations
-run in an immediate transaction; checksum drift, missing earlier migrations and
-unknown future migrations fail startup. A database from a newer release must not
-be opened by an older image without a documented compatible rollback.
+中转服务采用 Go 模块化单体。SQLite 使用 WAL、FULL 同步、外键、5 秒忙等待和单连接池。
+迁移在立即事务中执行；摘要变化、早期迁移缺失、未知未来迁移均阻止启动。
+新版数据库不能在没有明确兼容回滚方案时直接交给旧镜像。
 
-The current HTTP process exposes liveness, storage-backed readiness and honest
-capabilities. It stops readiness before draining on SIGTERM, then closes storage.
-When authentication is configured, it also serves device administration.
+HTTP 进程提供健康和能力接口，配置鉴权后还提供设备管理。SIGTERM 到来时先停止
+就绪，再等待请求退出，最后关闭数据库。
 
-## Milestones
+## 阶段
 
-| Stage | Deliverable | Acceptance |
+| 阶段 | 交付 | 验收 |
 | --- | --- | --- |
-| P0/P1 | Repository, board baseline, config, storage, protocol, CI/images | Local host/firmware gates and CI image smoke test |
-| P2 | Browser login, one-time pairing, per-device credentials, rooms, text, receipts | Idempotency, ACL isolation, offline redelivery, restart recovery |
-| P3 | Device provisioning and text reception | Two-board network/message and reboot tests |
-| P4 | Half-duplex PTT and WSS PCM audio | Simultaneous PTT, early release, disconnect and lease expiry |
-| P5 | DTLS/UDP, ADPCM, jitter buffer, WSS fallback | Packet loss, late drop, latency and memory measurements |
-| P6 | Production release, backups, rollback, user guide | Isolated deployment and existing services remain healthy |
+| P0/P1 | 仓库、硬件基线、配置、存储、协议、CI/镜像 | 本地主机与固件检查，以及 CI 容器启动测试 |
+| P2 | 网页登录、一次性配对、独立设备凭证、房间、文字、回执 | 幂等、权限隔离、离线补发、重启恢复 |
+| P3 | 设备配网和收信 | 两台设备联网、消息、重启测试 |
+| P4 | 半双工 PTT 和 WSS PCM 音频 | 同时抢麦、提前松手、断网、租约过期 |
+| P5 | DTLS/UDP、ADPCM、抖动缓冲、WSS 回退 | 丢包、迟到丢弃、延迟及内存实测 |
+| P6 | 正式发布、备份、回滚、用户说明 | 隔离部署，原有服务保持正常 |
 
-## Decisions reserved for later stages
+## 后续阶段遵循的决策
 
-- Identity: SN is a label, not a credential. Exchange a short-lived pairing code
-  for a unique revocable device secret over verified TLS.
-- Routing: authenticated sessions determine senders. Server ACLs decide rooms
-  and namespaces; client fields never grant authority.
-- Reliable traffic: WSS text/control, at-least-once delivery with idempotency.
-- Real-time traffic: DTLS/UDP preferred; independent binary WSS fallback.
-  Late frames are dropped and never replayed after reconnect.
-- PTT: one server-issued lease per room. Late grants after button release are
-  released immediately. Transport changes allocate a new stream epoch.
-- Audio target: 16 kHz mono, 20 ms blocks; PCM first, independent IMA ADPCM blocks
-  later. Codec interoperability, voice quality and resource use require hardware tests.
-- SQLite stores text and receipts. Live audio is not recorded. Future large
-  attachments use separate bounded upload/download storage.
-- UI: hold OK to talk on the home page; text reading and settings use separate
-  pages. Firmware handles common Chinese glyph coverage explicitly.
-- No production deployment in P0/P1. No game engine, E2EE or clustering in v1.
+- 身份：SN 只是标识；通过验证 TLS 的连接，用短期配对码换取独立且可撤销的设备密钥。
+- 路由：会话决定发送者，服务端权限决定房间和命名空间，客户端字段不能授予权限。
+- 可靠消息：文字和控制走 WSS，至少一次投递并使用幂等去重。
+- 实时消息：优先 DTLS/UDP，独立二进制 WSS 回退。迟到帧丢弃，重连不重播。
+- PTT：每个房间仅一份服务端麦权租约；松手后的迟到授权立即释放；切换传输分配新流代次。
+- 音频目标：16 kHz 单声道、20 ms 块；先 PCM，后独立 IMA ADPCM 块。
+  编码互通、音质与资源占用必须真机验证。
+- SQLite 保存文字和回执，不保存实时音频；未来大附件采用独立且有限额的上传下载存储。
+- 界面：首页按住 OK 讲话；文字和设置独立页面，明确处理常用中文字库覆盖。
+- P0/P1 不部署生产。v1 不实现游戏引擎、端到端加密和集群。
 
-P2a now provides optional administrator login, one-time pairing, device listing and revocation.
-See [authentication](../development/authentication.md). P2 rooms, text, receipts and WSS are pending.
+P2a 已提供可选管理员登录、一次性配对、设备列表和撤销，见[鉴权说明](../development/authentication.md)。
+P2 房间、文字、回执和 WSS 仍待实现。

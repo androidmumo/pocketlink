@@ -23,8 +23,8 @@ for path in files(ROOT):
     relative = path.relative_to(ROOT)
     if path.suffix == ".md":
         text = path.read_text()
-        zh = path.name.endswith(".zh_CN.md")
-        pair = path.with_name(path.name.replace(".zh_CN.md", ".md") if zh else path.stem + ".zh_CN.md")
+        zh = not path.name.endswith(".en.md")
+        pair = path.with_name(path.stem + ".en.md" if zh else path.name.replace(".en.md", ".md"))
         if not pair.exists() or f"]({pair.name})" not in text:
             errors.append(f"{relative}: missing paired document/language link")
         if not zh and re.search(r"[\u4e00-\u9fff]", text.replace("简体中文", "")):
