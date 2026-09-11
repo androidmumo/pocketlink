@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	console "github.com/androidmumo/pocketlink/apps/console"
 	"log/slog"
 	"net"
 	"net/http"
@@ -60,6 +61,19 @@ func run(ctx context.Context, c config.Config, logger *slog.Logger) error {
 	}
 	defer db.Close()
 	api := httpapi.New(db, version)
+	stage := "foundation"
+	if c.AdminPasswordFile != "" {
+		password, err := readPassword(c.AdminPasswordFile)
+		if err != nil {
+			return err
+		}
+		auth, err := httpapi.NewAuth(db, c.PublicOrigin, password)
+		if err != nil {
+			return err
+		}
+		api.EnableAuth(auth, console.Handler())
+		stage = "device-auth"
+	}
 	srv := &http.Server{Handler: api, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
 	listener, err := net.Listen("tcp", c.ListenAddress)
 	if err != nil {
@@ -67,7 +81,7 @@ func run(ctx context.Context, c config.Config, logger *slog.Logger) error {
 	}
 	done := make(chan error, 1)
 	go func() { done <- srv.Serve(listener) }()
-	logger.Info("server started", "listen", listener.Addr().String(), "version", version, "stage", "foundation")
+	logger.Info("server started", "listen", listener.Addr().String(), "version", version, "stage", stage)
 	select {
 	case err = <-done:
 		if errors.Is(err, http.ErrServerClosed) {

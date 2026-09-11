@@ -4,6 +4,7 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION=dev
 WORKDIR /src/services/relay
+COPY apps/console/ /src/apps/console/
 COPY services/relay/go.mod services/relay/go.sum ./
 RUN go mod download
 COPY services/relay/ ./

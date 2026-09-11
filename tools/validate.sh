@@ -5,6 +5,8 @@ cd "${root}"
 source tools/env.sh
 static() {
     python3 tools/check-repo.py
+    node --check apps/console/assets/app.js
+    test -z "$(gofmt -l apps/console/*.go)"
     scratch="$(mktemp -d "${TMPDIR:-/tmp}/pocketlink-check.XXXXXX")"
     trap 'rm -rf -- "${scratch}"' EXIT
     cc -std=c11 -Wall -Wextra -Werror -Ifirmware/apps/board-check/main \

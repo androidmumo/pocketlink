@@ -4,7 +4,12 @@ go 1.26.0
 
 toolchain go1.26.8
 
-require modernc.org/sqlite v1.58.0
+require (
+ modernc.org/sqlite v1.58.0
+ github.com/androidmumo/pocketlink/apps/console v0.0.0
+)
+
+replace github.com/androidmumo/pocketlink/apps/console => ../../apps/console
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect

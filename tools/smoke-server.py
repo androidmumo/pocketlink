@@ -4,6 +4,8 @@ import json
 import os
 from pathlib import Path
 import socket
+import secrets
+import urllib.error
 import subprocess
 import sys
 import tempfile
@@ -17,8 +19,32 @@ with tempfile.TemporaryDirectory(prefix="pocketlink-smoke-") as directory:
         port = sock.getsockname()[1]
     env = dict(os.environ, POCKETLINK_LISTEN=f"127.0.0.1:{port}",
                POCKETLINK_DATABASE=str(Path(directory) / "relay.db"))
+    env.pop("POCKETLINK_PUBLIC_ORIGIN", None)
+    env.pop("POCKETLINK_ADMIN_PASSWORD_FILE", None)
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    for iteration in range(2):
+    password = secrets.token_urlsafe(32)
+    password_file = Path(directory) / "admin-secret"
+    password_file.write_text(password)
+    password_file.chmod(0o600)
+    cookie = credential = None
+    def call(path, method="GET", data=None, admin=False, device=False):
+        headers = {"Content-Type": "application/json"}
+        if admin:
+            headers["Origin"] = "https://console.example"
+            if cookie: headers["Cookie"] = cookie
+        if device: headers["Authorization"] = "Bearer " + credential
+        req = urllib.request.Request(f"http://127.0.0.1:{port}/api/v1/" + path,
+                                     data=json.dumps(data).encode() if data is not None else None,
+                                     headers=headers, method=method)
+        try:
+            with opener.open(req, timeout=10) as response:
+                return response.status, json.load(response), response.headers
+        except urllib.error.HTTPError as error:
+            return error.code, json.load(error), error.headers
+    for iteration in range(4):
+        if iteration >= 2:
+            env["POCKETLINK_PUBLIC_ORIGIN"] = "https://console.example"
+            env["POCKETLINK_ADMIN_PASSWORD_FILE"] = str(password_file)
         with open(Path(directory) / f"run-{iteration}.log", "w+") as log:
             process = subprocess.Popen([binary], env=env, stdout=log, stderr=log)
             try:
@@ -37,11 +63,25 @@ with tempfile.TemporaryDirectory(prefix="pocketlink-smoke-") as directory:
                         time.sleep(0.1)
                 subprocess.run([binary, "healthcheck"], env=env, check=True)
                 with opener.open(f"http://127.0.0.1:{port}/api/v1/capabilities", timeout=1) as response:
-                    assert json.load(response)["enabled_features"] == []
+                    features = json.load(response)["enabled_features"]
+                    assert (features == []) if iteration < 2 else ("device_pairing" in features)
+                if iteration == 2:
+                    status, _, headers = call("auth/login", "POST", {"password": password}, admin=True)
+                    assert status == 200
+                    cookie = headers["Set-Cookie"].split(";", 1)[0]
+                    status, pair, _ = call("pairings", "POST", {"name": "smoke device"}, admin=True)
+                    assert status == 201
+                    status, paired, _ = call("device/pair", "POST", {"code": pair["code"], "sn": "smoke-device"})
+                    assert status == 201
+                    credential = paired["credential"]
+                    assert call("device/me", device=True)[0] == 200
+                if iteration == 3:
+                    assert call("auth/me", admin=True)[0] == 401
+                    assert call("device/me", device=True)[0] == 200
                 process.terminate()
                 assert process.wait(timeout=12) == 0
             finally:
                 if process.poll() is None:
                     process.kill()
                     process.wait()
-print("Process startup, database reopen, healthcheck and graceful shutdown: PASS")
+print("Process startup, authentication, session invalidation, device persistence and graceful shutdown: PASS")

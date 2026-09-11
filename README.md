@@ -4,9 +4,9 @@ English | [简体中文](README.zh_CN.md)
 
 A monorepo for connected pocket devices, relay services and web applications.
 
-**Current status: P0/P1 foundation.** The relay provides validated configuration,
-SQLite migrations, health endpoints and protocol parsers. It does **not** yet
-provide authentication, messaging, WebSocket sessions, voice relay or games.
+**Current status: P2a device authentication.** The relay provides validated configuration,
+SQLite migrations, health endpoints, protocol parsers and optional administrator/device
+authentication. Messaging, WebSocket sessions, voice relay and games are still pending.
 `board-check` is the imported hardware demo, not intercom firmware.
 
 ## Layout
@@ -14,7 +14,7 @@ provide authentication, messaging, WebSocket sessions, voice relay or games.
 | Directory | Purpose |
 | --- | --- |
 | `services/relay` | Go relay service |
-| `apps/console` | Reserved for the P2 administration UI; no application yet |
+| `apps/console` | Embedded login, device pairing and revocation UI |
 | `firmware/apps/board-check` | Independently buildable upstream hardware baseline |
 | `firmware/boards/ai_passport` | Shared BSP and provenance |
 | `packages/protocol` | Protocol v1 specification and shared test vectors |
@@ -35,7 +35,8 @@ go run ./cmd/server
 ```
 
 The HTTP listener defaults to `127.0.0.1:8080`. Check `/health/ready` and
-`/api/v1/capabilities`. There are no enabled business features yet.
+`/api/v1/capabilities`. Business features remain disabled until both authentication settings are provided.
+See [device authentication](docs/development/authentication.md).
 
 - [Architecture and milestones](docs/architecture/overview.md)
 - [Protocol v1](packages/protocol/README.md)

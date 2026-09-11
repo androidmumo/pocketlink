@@ -13,7 +13,7 @@ English | [简体中文](setup.zh_CN.md)
 - ESP-IDF 5.5.3 with ESP32-C3 tools for firmware. Activate its `export.sh`.
 - Docker Engine/Desktop plus Compose for local container testing. If unavailable,
   GitHub Actions builds and smoke-tests the image; do not claim a local Docker test.
-- Node.js is not required until the console implementation starts in P2.
+- Node.js 24 is required for console JavaScript syntax checks.
 
 ## Checks
 
@@ -59,3 +59,9 @@ and publishes multi-architecture amd64/arm64 images only on main or relay tags.
 Main gets `edge` and a commit tag; relay tags get their version and commit tag.
 Firmware output and SHA256 are uploaded as CI artifacts, not automatically flashed.
 No workflow holds production SSH credentials or deploys production.
+
+## Device authentication
+
+See [authentication](authentication.md) to enable the console and device endpoints using
+an HTTPS origin and password file. Frontend assets are dependency-free and embedded directly;
+Node.js 24 is used for JavaScript syntax validation, not bundling.

@@ -29,7 +29,11 @@ jobs:
       - name: Validate isolated Compose configuration
         env:
           POCKETLINK_IMAGE: pocketlink-relay:ci
-        run: docker compose -f deploy/compose.yaml config --quiet
+          POCKETLINK_PUBLIC_ORIGIN: https://console.example
+          POCKETLINK_ADMIN_SECRET_SOURCE: /dev/null
+        run: |
+          docker compose -f deploy/compose.yaml config --quiet
+          docker compose -f deploy/compose.yaml -f deploy/compose.auth.yaml config --quiet
 
   firmware:
     runs-on: ubuntu-latest

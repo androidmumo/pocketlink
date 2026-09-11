@@ -1,0 +1,11 @@
+# Optional authentication override; no deployment is performed by CI.
+services:
+  relay:
+    environment:
+      POCKETLINK_PUBLIC_ORIGIN: ${POCKETLINK_PUBLIC_ORIGIN:?Set the exact HTTPS origin}
+      POCKETLINK_ADMIN_PASSWORD_FILE: /run/secrets/admin_password
+    secrets:
+      - admin_password
+secrets:
+  admin_password:
+    file: ${POCKETLINK_ADMIN_SECRET_SOURCE:?Set the external password file path}

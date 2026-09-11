@@ -41,3 +41,29 @@ func TestIPv6(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAuthConfiguration(t *testing.T) {
+	for _, tc := range []struct {
+		origin, file string
+		valid        bool
+	}{
+		{"https://pocketlink.example", "/run/secrets/admin", true},
+		{"http://pocketlink.example", "/run/secrets/admin", false},
+		{"https://pocketlink.example/", "/run/secrets/admin", false},
+		{"https://user:pass@pocketlink.example", "/run/secrets/admin", false},
+		{"https://pocketlink.example", "", false}, {"", "/run/secrets/admin", false},
+	} {
+		_, e := Load(func(k string) string {
+			if k == "POCKETLINK_PUBLIC_ORIGIN" {
+				return tc.origin
+			}
+			if k == "POCKETLINK_ADMIN_PASSWORD_FILE" {
+				return tc.file
+			}
+			return ""
+		})
+		if (e == nil) != tc.valid {
+			t.Fatal("unexpected auth config validation")
+		}
+	}
+}

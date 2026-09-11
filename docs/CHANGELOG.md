@@ -9,4 +9,5 @@ English | [简体中文](CHANGELOG.zh_CN.md)
   capability reporting and graceful shutdown.
 - Add protocol v1 parsers, shared vectors and host tests.
 - Add isolated container configuration and gated image/firmware CI artifacts.
-- Authentication, text delivery, web UI and intercom remain future milestones.
+- Add optional administrator login, single-use device pairing, persistent revocable credentials
+  and an embedded device management console. Text delivery and intercom remain pending.

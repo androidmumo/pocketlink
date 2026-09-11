@@ -1,9 +1,18 @@
 English | [简体中文](README.zh_CN.md)
 
-# Console implementation boundary
+# Device management console
 
-The web application starts in P2. There is no UI bundle or login page yet.
-Planned flows: administrator login, one-time device pairing, room membership,
-plain-text sending, per-device delivery/read receipts and bounded history paging.
-The build will embed static assets in the relay image so the first deployment
-runs one application container. Do not add mock authentication to the P1 service.
+The console provides administrator login/logout, one-time pairing code creation,
+device listing and credential revocation. It is a small embedded HTML/CSS/JavaScript
+application with no third-party frontend dependencies or external asset requests.
+The local Go module embeds source assets directly; relay builds include it through
+an explicit relative module replacement. No generated asset copies are checked in.
+
+The UI is served at `/` only when authentication is configured. It uses same-origin
+requests and an HttpOnly session cookie; credentials are never stored in localStorage.
+Device names and serials are rendered as text. A strict CSP disallows inline scripts.
+See [authentication](../../docs/development/authentication.md) for setup and API contracts.
+
+Rooms, text composition, delivery receipts and audio are still pending. The pairing
+code must later be transferred through the device configuration flow, not typed with
+three device buttons. No pairing firmware is included in this increment.

@@ -13,7 +13,7 @@
 - 固件使用 ESP-IDF 5.5.3 与 ESP32-C3 工具，先激活其 `export.sh`。
 - 本地容器测试需要 Docker Engine/Desktop 和 Compose。不可用时由 GitHub Actions
   构建和验证镜像，不得宣称通过本地 Docker 测试。
-- Node.js 到 P2 网页实现阶段才需要。
+- Node.js 24 用于管理页脚本语法检查。
 
 ## 检查
 
@@ -53,3 +53,8 @@ P1 程序提供本地或反向代理使用的 HTTP，不用于直接公开凭证
 main 生成 `edge` 及提交标签；relay 标签生成对应版本和提交标签。
 固件及 SHA256 作为 CI 附件上传，不自动刷机。
 流水线不保存生产 SSH 凭证，也不自动部署生产。
+
+## 设备鉴权
+
+通过 HTTPS 来源和密码文件启用管理页及设备接口，见[鉴权说明](authentication.zh_CN.md)。
+前端无第三方依赖，直接嵌入源码资源；Node.js 24 用于 JavaScript 语法检查，无需打包工具。

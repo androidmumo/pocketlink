@@ -15,7 +15,7 @@ be opened by an older image without a documented compatible rollback.
 
 The current HTTP process exposes liveness, storage-backed readiness and honest
 capabilities. It stops readiness before draining on SIGTERM, then closes storage.
-No public business endpoints or authentication placeholders are exposed.
+When authentication is configured, it also serves device administration.
 
 ## Milestones
 
@@ -46,3 +46,6 @@ No public business endpoints or authentication placeholders are exposed.
 - UI: hold OK to talk on the home page; text reading and settings use separate
   pages. Firmware handles common Chinese glyph coverage explicitly.
 - No production deployment in P0/P1. No game engine, E2EE or clustering in v1.
+
+P2a now provides optional administrator login, one-time pairing, device listing and revocation.
+See [authentication](../development/authentication.md). P2 rooms, text, receipts and WSS are pending.

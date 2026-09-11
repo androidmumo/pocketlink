@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -13,10 +14,13 @@ type API struct {
 	store    Readiness
 	draining atomic.Bool
 	version  string
+	auth     *Auth
+	console  http.Handler
 }
 
-func New(store Readiness, version string) *API { return &API{store: store, version: version} }
-func (a *API) Drain()                          { a.draining.Store(true) }
+func New(store Readiness, version string) *API             { return &API{store: store, version: version} }
+func (a *API) EnableAuth(auth *Auth, console http.Handler) { a.auth = auth; a.console = console }
+func (a *API) Drain()                                      { a.draining.Store(true) }
 func write(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
@@ -25,6 +29,20 @@ func write(w http.ResponseWriter, status int, value any) {
 	_ = json.NewEncoder(w).Encode(value)
 }
 func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if a.auth != nil {
+		if r.URL.Path == "/" || strings.HasPrefix(r.URL.Path, "/assets/") {
+			a.console.ServeHTTP(w, r)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/api/v1/") && r.URL.Path != "/api/v1/capabilities" {
+			if a.draining.Load() {
+				fail(w, 503, "unavailable")
+				return
+			}
+			a.auth.ServeHTTP(w, r)
+			return
+		}
+	}
 	switch r.URL.Path {
 	case "/health/live", "/health/ready", "/api/v1/capabilities":
 	default:
@@ -52,6 +70,12 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		write(w, 200, map[string]string{"status": "ready"})
 	case "/api/v1/capabilities":
-		write(w, 200, map[string]any{"protocol_versions": []int{1}, "server_version": a.version, "stage": "foundation", "enabled_features": []string{}, "limits": map[string]int{"control_bytes": 8192, "text_utf8_bytes": 2048, "text_codepoints": 200, "realtime_plaintext_bytes": 1100}})
+		features := []string{}
+		stage := "foundation"
+		if a.auth != nil {
+			features = []string{"admin_login", "device_pairing", "device_revocation"}
+			stage = "device-auth"
+		}
+		write(w, 200, map[string]any{"protocol_versions": []int{1}, "server_version": a.version, "stage": stage, "enabled_features": features, "limits": map[string]int{"control_bytes": 8192, "text_utf8_bytes": 2048, "text_codepoints": 200, "realtime_plaintext_bytes": 1100}})
 	}
 }
