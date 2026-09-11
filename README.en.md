@@ -5,8 +5,8 @@
 One repository for connected pocket-device firmware, relay services and a web console,
 with future expansion into multiplayer games and other applications.
 
-**Current release: P2a trial, with login, pairing-code creation, device listing and credential revocation.**
-Rooms, text messages, offline delivery, receipts and voice intercom are not implemented.
+**Current release: P2 trial with device management, room permissions, text sending, offline delivery and per-device receipts.**
+Device reception firmware and voice intercom are not implemented.
 `board-check` is the hardware demonstration baseline, not intercom or pairing firmware.
 
 [Using the console](#using-the-console) · [Deploying](#first-deployment-on-a-new-server) · [Maintenance](#maintenance-and-upgrades) · [Backups](#backup-and-recovery) · [Troubleshooting](#troubleshooting) · [Development](#local-development-and-repository-layout)
@@ -50,6 +50,13 @@ SN is an identifier, not a password. Pairing codes and device credentials are ra
 SQLite stores only their digests. Limits: 32 unexpired codes, 256 active devices, 1024 retained
 serials and a shared 20 login/pairing attempts per minute. There is no web password editor,
 automatic device-token expiry or multi-administrator account system yet.
+
+### Rooms and text
+
+Create a room, check paired devices as members, then send up to 200 characters. Messages persist before delivery;
+view/refresh receipts in history for pending, received, read or withdrawn status. New members do not receive history;
+removing members or archiving withdraws delivery rights. Physical reception still needs upcoming firmware.
+Retry identical content after network failure; check history before resending after reload. See the [text/WSS contract](docs/development/messaging.en.md).
 
 ## First deployment on a new server
 
@@ -229,7 +236,7 @@ disk failure. No automatic backup or cleanup policy is configured; schedule it a
 | 409 | Check code/device/retained-serial limits; expired codes are pruned when creating another code |
 | Cannot read password/database | Check UID/GID, permissions and mounts; do not open the whole site's permissions |
 | Expired/used pairing code | Generate another; revoke first if the device exists but its response was lost |
-| Missing text/PTT controls | Text and intercom are not implemented in this release |
+| Missing device text/PTT controls | Server text transport is implemented; device firmware and audio remain pending |
 
 ## Local development and repository layout
 

@@ -75,3 +75,5 @@ The test fixture carries opaque bytes; it does not certify a codec implementatio
 
 See [vectors.json](vectors.json). Go parser tests consume this same file; future
 firmware tests must consume equivalent fixtures before protocol changes ship.
+
+P2 enables `text.message`, `text.ack` and `ack.result`; see [messaging](../../docs/development/messaging.en.md) for payloads, authorization, receipts and replay. Other listed types remain reserved.

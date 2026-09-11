@@ -75,13 +75,26 @@ with tempfile.TemporaryDirectory(prefix="pocketlink-smoke-") as directory:
                     assert status == 201
                     credential = paired["credential"]
                     assert call("device/me", device=True)[0] == 200
+                    status, room, _ = call("rooms", "POST", {"name": "smoke room"}, admin=True)
+                    assert status == 201
+                    room_path = "rooms/" + room["id"]
+                    assert call(room_path + "/members/" + paired["device"]["id"], "PUT", admin=True)[0] == 200
+                    status, message, _ = call(room_path + "/messages", "POST", {"request_id": "smoke-retry", "text": "persist me"}, admin=True)
+                    assert status == 200
+                    assert call(room_path + "/messages", "POST", {"request_id": "smoke-retry", "text": "persist me"}, admin=True)[1]["id"] == message["id"]
                 if iteration == 3:
                     assert call("auth/me", admin=True)[0] == 401
                     assert call("device/me", device=True)[0] == 200
+                    status, inbox, _ = call("device/inbox", device=True)
+                    assert status == 200 and len(inbox["messages"]) == 1
+                    assert inbox["messages"][0]["id"] == message["id"]
+                    assert call("device/ack", "POST", {"message_id": message["id"], "state": "read"}, device=True)[0] == 200
+                    assert call("device/ack", "POST", {"message_id": message["id"], "state": "received"}, device=True)[0] == 200
+                    assert call("device/inbox", device=True)[1]["messages"] == []
                 process.terminate()
                 assert process.wait(timeout=12) == 0
             finally:
                 if process.poll() is None:
                     process.kill()
                     process.wait()
-print("Process startup, authentication, session invalidation, device persistence and graceful shutdown: PASS")
+print("Process startup, authentication, idempotent text, offline recovery, receipts and graceful shutdown: PASS")

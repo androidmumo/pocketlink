@@ -61,6 +61,7 @@ func run(ctx context.Context, c config.Config, logger *slog.Logger) error {
 	}
 	defer db.Close()
 	api := httpapi.New(db, version)
+	defer api.Drain()
 	stage := "foundation"
 	if c.AdminPasswordFile != "" {
 		password, err := readPassword(c.AdminPasswordFile)
@@ -72,7 +73,7 @@ func run(ctx context.Context, c config.Config, logger *slog.Logger) error {
 			return err
 		}
 		api.EnableAuth(auth, console.Handler())
-		stage = "device-auth"
+		stage = "text"
 	}
 	srv := &http.Server{Handler: api, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
 	listener, err := net.Listen("tcp", c.ListenAddress)

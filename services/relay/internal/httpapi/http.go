@@ -20,7 +20,12 @@ type API struct {
 
 func New(store Readiness, version string) *API             { return &API{store: store, version: version} }
 func (a *API) EnableAuth(auth *Auth, console http.Handler) { a.auth = auth; a.console = console }
-func (a *API) Drain()                                      { a.draining.Store(true) }
+func (a *API) Drain() {
+	a.draining.Store(true)
+	if a.auth != nil {
+		a.auth.stopStreams()
+	}
+}
 func write(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
@@ -73,8 +78,8 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		features := []string{}
 		stage := "foundation"
 		if a.auth != nil {
-			features = []string{"admin_login", "device_pairing", "device_revocation"}
-			stage = "device-auth"
+			features = []string{"admin_login", "device_pairing", "device_revocation", "rooms", "text_messages", "receipts", "device_websocket"}
+			stage = "text"
 		}
 		write(w, 200, map[string]any{"protocol_versions": []int{1}, "server_version": a.version, "stage": stage, "enabled_features": features, "limits": map[string]int{"control_bytes": 8192, "text_utf8_bytes": 2048, "text_codepoints": 200, "realtime_plaintext_bytes": 1100}})
 	}

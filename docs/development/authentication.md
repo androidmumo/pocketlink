@@ -2,8 +2,7 @@
 
 # 设备鉴权增量（P2a）
 
-P0/P1 产物已通过 CI。P2a 增加单管理员和独立设备凭证，尚未完成 P2 的房间、文字、回执
-和 WebSocket 会话。board-check 固件不变。体验环境已部署，详见 [README](../../README.md)。
+P0/P1 产物已通过 CI。P2a 增加单管理员和独立设备凭证，P2 房间、文字、回执和 WebSocket 已在后续增量实现，见[文字协议](messaging.md)。board-check 固件不变。体验环境已部署，详见 [README](../../README.md)。
 
 ## 配置
 

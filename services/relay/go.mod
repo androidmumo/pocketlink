@@ -5,8 +5,9 @@ go 1.26.0
 toolchain go1.26.8
 
 require (
- modernc.org/sqlite v1.58.0
- github.com/androidmumo/pocketlink/apps/console v0.0.0
+	github.com/androidmumo/pocketlink/apps/console v0.0.0
+	github.com/coder/websocket v1.8.15
+	modernc.org/sqlite v1.58.0
 )
 
 replace github.com/androidmumo/pocketlink/apps/console => ../../apps/console

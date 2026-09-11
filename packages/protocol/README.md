@@ -64,3 +64,5 @@ TTL 不是墙上时钟时间戳：接收端结合采样时间戳与有界单调�
 
 见 [vectors.json](vectors.json)。Go 解析器测试直接读取该文件；未来固件测试也必须验证
 等价向量，才能发布协议变更。
+
+P2 已启用 `text.message`、`text.ack` 和 `ack.result`；具体载荷、鉴权、回执和补发规则见[文字通道](../../docs/development/messaging.md)。其余列出的类型仍为预留。

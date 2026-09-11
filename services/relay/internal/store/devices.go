@@ -110,16 +110,24 @@ func (s *Store) Devices(ctx context.Context) ([]Device, error) {
 	return result, rows.Err()
 }
 func (s *Store) RevokeDevice(ctx context.Context, id string, now int64) error {
-	r, err := s.db.ExecContext(ctx, "UPDATE devices SET revoked_at=COALESCE(revoked_at,?) WHERE id=?", now, id)
-	if err != nil {
-		return err
+	tx, e := s.db.BeginTx(ctx, nil)
+	if e != nil {
+		return e
 	}
-	n, err := r.RowsAffected()
-	if err != nil {
-		return err
+	defer tx.Rollback()
+	result, e := tx.ExecContext(ctx, "UPDATE devices SET revoked_at=COALESCE(revoked_at,?) WHERE id=?", now, id)
+	if e != nil {
+		return e
 	}
+	n, _ := result.RowsAffected()
 	if n == 0 {
 		return ErrDenied
 	}
-	return nil
+	if _, e = tx.ExecContext(ctx, "DELETE FROM room_members WHERE device_id=?", id); e != nil {
+		return e
+	}
+	if _, e = tx.ExecContext(ctx, "UPDATE receipts SET withdrawn_at=COALESCE(withdrawn_at,?) WHERE device_id=?", now, id); e != nil {
+		return e
+	}
+	return tx.Commit()
 }

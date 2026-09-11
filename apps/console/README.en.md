@@ -13,6 +13,6 @@ requests and an HttpOnly session cookie; credentials are never stored in localSt
 Device names and serials are rendered as text. A strict CSP disallows inline scripts.
 See [authentication](../../docs/development/authentication.en.md) for setup and API contracts.
 
-Rooms, text composition, delivery receipts and audio are still pending. The pairing
+Rooms, membership, text composition, paginated history and per-device receipts are implemented. Audio remains pending. The pairing
 code must later be transferred through the device configuration flow, not typed with
 three device buttons. No pairing firmware is included in this increment.

@@ -11,3 +11,5 @@ The verifier tests only change their repository-root lookup after relocation.
 Go dependencies are recorded in `services/relay/go.mod` and `go.sum`; ESP-IDF
 Managed Components are recorded in the board-check manifest/lock. Their original
 licenses apply. No new project-wide license grant is implied by these notices.
+
+WebSocket uses `github.com/coder/websocket` v1.8.15 (ISC license), pinned in the Go module files.

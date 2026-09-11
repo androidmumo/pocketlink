@@ -35,6 +35,10 @@ type Auth struct {
 	window             time.Time
 	attempts           int
 	verifying          chan struct{}
+	messageWindow      time.Time
+	messageAttempts    int
+	streams            map[string]*streamSession
+	stopping           bool
 }
 
 // A single configured administrator is intentional for the private v1 server.
@@ -51,7 +55,7 @@ func NewAuth(db *store.Store, origin, password string) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Auth{db: db, origin: origin, salt: salt, passwordHash: hash, sessions: map[string]time.Time{}, verifying: make(chan struct{}, 1)}, nil
+	return &Auth{db: db, origin: origin, salt: salt, passwordHash: hash, sessions: map[string]time.Time{}, verifying: make(chan struct{}, 1), streams: map[string]*streamSession{}}, nil
 }
 func secret() string {
 	b := make([]byte, 32)
@@ -120,13 +124,16 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	// No forwarded header is trusted. Exact configured Origin is mandatory on
 	// browser requests. Device endpoints use bearer credentials, never cookies.
-	device := r.URL.Path == "/api/v1/device/pair" || r.URL.Path == "/api/v1/device/me"
+	device := strings.HasPrefix(r.URL.Path, "/api/v1/device/")
 	if !device && ((r.Method != "GET" && r.Header.Get("Origin") != a.origin) || (r.Header.Get("Origin") != "" && r.Header.Get("Origin") != a.origin) || (r.Header.Get("Sec-Fetch-Site") == "cross-site")) {
 		fail(w, 403, "origin_denied")
 		return
 	}
 	if device && r.Header.Get("Origin") != "" {
 		fail(w, 403, "device_endpoint")
+		return
+	}
+	if a.messageHTTP(w, r) {
 		return
 	}
 	switch {

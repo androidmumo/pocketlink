@@ -9,3 +9,5 @@ AI Passport 源码、基线配置、UI 数学测试、固件校验器及其测�
 
 Go 依赖记录在 `services/relay/go.mod`、`go.sum`；ESP-IDF 托管组件记录在 board-check
 清单及锁文件，各自原许可证仍适用。本文不代表授予新的项目整体许可证。
+
+WebSocket 使用 `github.com/coder/websocket` v1.8.15（ISC 许可证），版本及摘要固定在 Go 模块文件中。

@@ -48,4 +48,4 @@ When authentication is configured, it also serves device administration.
 - No production deployment in P0/P1. No game engine, E2EE or clustering in v1.
 
 P2a now provides optional administrator login, one-time pairing, device listing and revocation.
-See [authentication](../development/authentication.en.md). P2 rooms, text, receipts and WSS are pending.
+See [authentication](../development/authentication.en.md). P2 rooms, text, receipts and WSS are implemented; see [messaging](../development/messaging.en.md). Device firmware remains P3.

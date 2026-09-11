@@ -3,7 +3,7 @@
 # Device authentication increment (P2a)
 
 P0/P1 artifacts have passed CI. P2a adds a single administrator and independent device
-credentials; it does not complete P2 rooms, text delivery, receipts or WebSocket sessions.
+credentials; the later P2 increment implements rooms, text, receipts and WebSocket sessions; see [messaging](messaging.en.md).
 The board-check image is unchanged. A trial is deployed; see the [README](../../README.en.md).
 
 ## Configuration
