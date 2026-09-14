@@ -2,8 +2,9 @@
 
 # Deployment boundaries
 
-The user authorized a P2a trial deployment with login and device management only.
-The complete intercom service remains a later milestone. The user manages the
+The user authorized a P2 text trial with login, device management, room permissions,
+text sending, offline delivery and receipts. Device reception firmware and voice
+intercom remain later milestones. The user manages the
 domain and HTTPS reverse proxy in 1Panel.
 
 ## Isolated deployment configuration
@@ -33,12 +34,13 @@ Docker daemon settings or shared 1Panel networks. Do not run global prune or
 If OpenResty uses host networking, its upstream can be the loopback application
 port. A containerized proxy on a bridge requires a separately reviewed network
 attachment instead. The application port stays off public security-group rules.
-TLS and future WebSocket upgrade handling belong to the dedicated reverse-proxy
+TLS and WebSocket upgrade handling belong to the dedicated reverse-proxy
 site. P2 must define trusted proxies before using forwarded headers for security.
 
 ## Backup and rollback
 
-The named `pocketlink-prod_data` volume holds SQLite and WAL files. Do not copy
+The template uses the named `pocketlink-prod_data` volume; this deployment uses
+the `data/` bind directory recorded below for SQLite and WAL files. Do not copy
 only the live main DB file. Before a migration, either use a tested SQLite online
 backup command or stop only this service and snapshot its entire data volume.
 Keep backups outside the live volume; protect them as private message data.
@@ -53,11 +55,11 @@ GHCR can require a registry login for private packages. Do not put registry or
 server credentials in the repository or logs. Publishing via GITHUB_TOKEN and
 production pulling are distinct permissions. CI performs no production updates.
 
-## Current trial environment (2026-09-11)
+## Current trial environment (upgraded 2026-09-11, rechecked 2026-09-14)
 
 - URL: `https://pocketlink.mcloc.cn`, proxied by 1Panel to `127.0.0.1:3002`.
-- Application commit: `a204762f96e519fd1315a180d7af0287e8852ac8`.
-- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:d9c02a8e2ba751b290ae2cee369eddb2a949c5812bde342281f72c1ad909997f`.
+- Application commit: `b7c5618c77b003e0323bfee8ec6a1774c126ab96`.
+- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:b2c473220481cafd4b028d2b4257ccaebd54c3c0cb31377e8feaa7cc7e09696c`.
 - Active configuration: `/opt/pocketlink/compose.yaml`, `compose.auth.yaml` and `.env`.
 - Persistent files live under `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`:
   `data/` holds SQLite, `secrets/admin_password` the administrator secret and `backups/` consistent backups.
@@ -74,3 +76,11 @@ Existing bing, chat and OpenResty containers were not restarted. The initial bac
 `backups/initial-20260911T011224Z.tar.gz`; no scheduled backup has been configured.
 Administrators can read the password through 1Panel file management. It is never committed
 or printed in deployment logs.
+
+The pre-text-upgrade backup is `backups/before-text-20260911T073934Z.tar.gz`.
+Checks on 2026-09-14 passed: new container health, loopback port 3002 and data mount,
+live database integrity, pre-upgrade backup database restore, HTTPS text capabilities,
+login, room/device list reads and logout. Existing bing, chat and OpenResty start
+times match the pre-upgrade baseline. WebSocket delivery, reconnect replay and receipts
+passed host and CI tests; real devices behind the production proxy, full browser
+interaction and physical device reception remain unverified.

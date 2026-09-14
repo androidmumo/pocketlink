@@ -12,7 +12,7 @@
 
 ## 当前已部署的环境
 
-访问 **[PocketLink 管理页](https://pocketlink.mcloc.cn)**。以下是 2026-09-11 的部署记录，后续实际配置以服务器文件为准。
+访问 **[PocketLink 管理页](https://pocketlink.mcloc.cn)**。以下是 2026-09-11 升级、2026-09-14 复核的部署记录，后续实际配置以服务器文件为准。
 
 | 项目 | 配置 |
 | --- | --- |
@@ -23,7 +23,7 @@
 | 数据库 | 上述目录的 `data/relay.db`，以及运行时的 SQLite WAL 文件 |
 | 管理员密码 | 上述目录的 `secrets/admin_password` |
 | 备份 | 上述目录的 `backups/`；目前没有自动备份任务 |
-| 应用版本 | `a204762f96e519fd1315a180d7af0287e8852ac8` |
+| 应用版本 | `b7c5618c77b003e0323bfee8ec6a1774c126ab96` |
 | 资源限制 | 192 MB 内存、0.5 CPU、128 个进程；非 root、只读根文件系统 |
 
 网页已包含在服务端镜像中，无需另外部署前端或安装 MySQL。SQLite 使用专属目录持久化。
@@ -73,7 +73,7 @@ test ! -e /opt/pocketlink
 test ! -e /opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
 git clone https://github.com/androidmumo/pocketlink.git /opt/pocketlink-src
 cd /opt/pocketlink-src
-git checkout 189cadb
+git checkout b7c5618c77b003e0323bfee8ec6a1774c126ab96
 install -d -m 700 /opt/pocketlink
 cp deploy/compose.yaml deploy/compose.auth.yaml /opt/pocketlink/
 base=/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
@@ -91,10 +91,10 @@ PASSWORD
 ```
 
 在 `/opt/pocketlink/.env` 写入以下内容，设置权限为 `600`。固定镜像摘要来自
-[已通过的 CI 构建](https://github.com/androidmumo/pocketlink/actions/runs/34548250044)，不要把浮动 `edge` 当作固定版本。
+[已通过的 CI 构建](https://github.com/androidmumo/pocketlink/actions/runs/34574560808)，不要把浮动 `edge` 当作固定版本。
 
 ```dotenv
-POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:d9c02a8e2ba751b290ae2cee369eddb2a949c5812bde342281f72c1ad909997f
+POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:b2c473220481cafd4b028d2b4257ccaebd54c3c0cb31377e8feaa7cc7e09696c
 POCKETLINK_HTTP_PORT=3002
 POCKETLINK_LOG_LEVEL=info
 POCKETLINK_PUBLIC_ORIGIN=https://pocketlink.mcloc.cn
@@ -177,6 +177,7 @@ curl -fsS http://127.0.0.1:3002/health/ready
 
 ## 备份与恢复
 
+文字版本升级前备份为 `backups/before-text-20260911T073934Z.tar.gz`，已恢复至临时目录并通过数据库完整性检查。
 当前初始备份为 `backups/initial-20260911T011224Z.tar.gz`，只代表当时的数据库状态，
 不是持续备份。数据库运行时可能有 WAL 文件，**不能只复制运行中的 `relay.db`**。
 

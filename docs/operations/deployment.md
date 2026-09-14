@@ -2,7 +2,8 @@
 
 # 部署边界
 
-已按用户授权部署 P2a 体验版，仅提供登录与设备管理，完整对讲服务仍待后续阶段。
+已按用户授权部署 P2 文字体验版，提供登录、设备管理、房间成员权限、文字发送、离线补发和回执。
+设备收信固件与语音对讲仍待后续阶段。
 代理目标验证后，由用户在 1Panel 管理域名站点。
 
 ## 隔离部署配置
@@ -26,7 +27,7 @@ docker compose --env-file /opt/pocketlink/.env   -p pocketlink-prod -f /opt/pock
 禁止全局 prune 和 `down -v`。Docker 无法隔离内核、总磁盘耗尽和宿主机故障。
 
 OpenResty 使用 host 网络时，可以代理回环应用端口；若代理运行在 bridge 网络，需另行审查
-专属网络连接。应用端口不加入公网安全组。TLS 和未来 WebSocket Upgrade 由专属代理站点处理。
+专属网络连接。应用端口不加入公网安全组。TLS 和 WebSocket Upgrade 由专属代理站点处理。
 P2 在根据转发头做安全判断前，必须定义可信代理。
 
 ## 备份与回滚
@@ -43,11 +44,11 @@ P2 在根据转发头做安全判断前，必须定义可信代理。
 私有 GHCR 包拉取可能需要登录。注册表和服务器凭证不得进入 Git 或日志。
 GITHUB_TOKEN 发布权限与生产拉取权限不同。CI 不更新生产。
 
-## 当前体验环境（2026-09-11）
+## 当前体验环境（2026-09-11 升级，2026-09-14 复核）
 
 - 地址：`https://pocketlink.mcloc.cn`，1Panel 代理到 `127.0.0.1:3002`。
-- 应用版本：`a204762f96e519fd1315a180d7af0287e8852ac8`。
-- 镜像：`ghcr.io/androidmumo/pocketlink-relay@sha256:d9c02a8e2ba751b290ae2cee369eddb2a949c5812bde342281f72c1ad909997f`。
+- 应用版本：`b7c5618c77b003e0323bfee8ec6a1774c126ab96`。
+- 镜像：`ghcr.io/androidmumo/pocketlink-relay@sha256:b2c473220481cafd4b028d2b4257ccaebd54c3c0cb31377e8feaa7cc7e09696c`。
 - 生效配置：`/opt/pocketlink/compose.yaml`、`compose.auth.yaml` 和 `.env`。
 - 所有持久化文件位于 `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`：
   `data/` 为 SQLite，`secrets/admin_password` 为管理密码，`backups/` 为一致性备份。
@@ -61,3 +62,10 @@ GITHUB_TOKEN 发布权限与生产拉取权限不同。CI 不更新生产。
 在临时目录恢复并执行 SQLite 完整性检查。现有 bing、chat、OpenResty 容器未重启。
 初始备份为 `backups/initial-20260911T011224Z.tar.gz`；未配置自动备份任务。
 密码可由管理员在 1Panel 文件管理中读取；不提交到 Git，也不打印到部署日志。
+
+文字版本升级前备份为 `backups/before-text-20260911T073934Z.tar.gz`。
+2026-09-14 复核通过：新版容器健康、3002 回环端口和数据挂载、线上数据库完整性、
+升级前备份恢复检查、HTTPS 文字能力声明、登录及房间/设备列表读取、退出。
+现有 bing、chat、OpenResty 的启动时间与升级前一致。
+WebSocket 收信、重连补发和回执已通过主机与 CI 测试；真实代理后的设备联调、
+完整浏览器交互和真机收信尚未验证。
