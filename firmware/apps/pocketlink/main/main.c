@@ -136,13 +136,16 @@ static bool connect_wifi(const pl_config *config) {
     station.sta.threshold.authmode = config->password[0] ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
     station.sta.pmf_cfg.capable = true;
     if (esp_wifi_set_config(WIFI_IF_STA, &station) != ESP_OK || esp_wifi_connect() != ESP_OK) return false;
-    return (xEventGroupWaitBits(events, LINK_UP, pdFALSE, pdFALSE, pdMS_TO_TICKS(20000)) & LINK_UP) != 0;
+    bool connected = (xEventGroupWaitBits(events, LINK_UP, pdFALSE, pdFALSE, pdMS_TO_TICKS(20000)) & LINK_UP) != 0;
+    /* Avoid starting DNS/SNTP retries while the device is still offline. */
+    if (connected && !esp_sntp_restart()) esp_sntp_init();
+    return connected;
 }
 static bool clock_ready(void) {
     time_t now = time(NULL);
     if (now > 1767225600) return true;
     set_status("已联网，正在同步时间以验证证书");
-    for (unsigned i = 0; i < 100; i++) {
+    for (unsigned i = 0; i < 300; i++) {
         vTaskDelay(pdMS_TO_TICKS(100));
         if (time(NULL) > 1767225600) return true;
     }
@@ -533,7 +536,7 @@ void app_main(void) {
     snprintf(serial, sizeof(serial), "PL-%02X%02X%02X%02X%02X%02X", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
     snprintf(ap_name, sizeof(ap_name), "PocketLink-%02X%02X%02X", mac[3],mac[4],mac[5]);
     esp_sntp_setoperatingmode(SNTP_OPMODE_POLL); esp_sntp_setservername(0, "ntp.aliyun.com");
-    esp_sntp_setservername(1, "pool.ntp.org"); esp_sntp_init();
+    esp_sntp_setservername(1, "pool.ntp.org");
     render();
     if (saved.config.ssid[0]) {
         set_status("正在连接已保存网络");
