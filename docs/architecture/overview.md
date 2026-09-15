@@ -37,4 +37,8 @@ HTTP 进程提供健康和能力接口，配置鉴权后还提供设备管理。
 - P0/P1 不部署生产。v1 不实现游戏引擎、端到端加密和集群。
 
 P2a 已提供可选管理员登录、一次性配对、设备列表和撤销，见[鉴权说明](../development/authentication.md)。
-P2 房间、文字、回执和 WSS 已实现，详见[文字协议](../development/messaging.md)。设备固件仍待 P3。
+P2 房间、文字、回执和 WSS 已实现，详见[文字协议](../development/messaging.md)。设备固件进入 P3 开发与验收阶段。
+
+P3 开发固件源码已加入：采用设备 SoftAP 本地网页配网、HTTPS 绑定与每 5 秒轮询文字。
+仅保存当前一条消息，更多未读保留在服务器；详见[设备方案](../development/device-provisioning.md)。
+P3 尚未通过两台真机验收，不能视为阶段完成。

@@ -6,8 +6,10 @@ One repository for connected pocket-device firmware, relay services and a web co
 with future expansion into multiplayer games and other applications.
 
 **Current release: P2 trial with device management, room permissions, text sending, offline delivery and per-device receipts.**
-Device reception firmware and voice intercom are not implemented.
-`board-check` is the hardware demonstration baseline, not intercom or pairing firmware.
+A new **P3 device development build** implements QR hotspot provisioning, HTTPS pairing
+and text reception, pending physical-device acceptance. Voice is not implemented.
+Use `pocketlink` firmware for device features; `board-check` remains hardware diagnostics.
+[Device provisioning and flashing guide](docs/development/device-provisioning.en.md)
 
 [Using the console](#using-the-console) · [Deploying](#first-deployment-on-a-new-server) · [Maintenance](#maintenance-and-upgrades) · [Backups](#backup-and-recovery) · [Troubleshooting](#troubleshooting) · [Development](#local-development-and-repository-layout)
 
@@ -38,9 +40,10 @@ backup recovery and database integrity were verified. Physical device pairing is
    There is one administrator, with no username, registration or default password. Never commit the password or post it publicly.
 2. Open the console over HTTPS and log in. Sessions last up to 12 hours; restarting the service requires another login.
 3. Enter a device name and generate a pairing code. Names allow 40 characters. Codes expire after 10 minutes and work once.
-4. A future device configuration flow will transfer the code to the device. Pairing firmware is not implemented:
-   **generating a code alone does not add a device**. Developers can exchange it at `/api/v1/device/pair`
-   according to the [authentication API](docs/development/authentication.en.md).
+4. With the pocketlink development firmware, scan the device hotspot QR and enter Wi-Fi
+   settings and the pairing code on its local page. See [device provisioning](docs/development/device-provisioning.en.md).
+   **Generating a code alone does not add a device**; it appears after successful pairing.
+   Developers can also use the [authentication API](docs/development/authentication.en.md).
 5. Refresh after successful pairing. An active entry means its credential is valid, **not that the device is online**.
 6. Revoke the credential when a device is lost or needs rotation. Old tokens stop working immediately;
    revoke an active SN before pairing it again.
@@ -246,6 +249,8 @@ disk failure. No automatic backup or cleanup policy is configured; schedule it a
 | `services/relay` | Go service, authentication, SQLite and protocol parsing |
 | `apps/console` | Embedded console without third-party frontend dependencies |
 | `firmware/apps/board-check` | Independent ESP-IDF hardware baseline |
+| `firmware/apps/pocketlink` | QR provisioning, pairing and text reception development firmware |
+| `firmware/components/pocketlink_config` | Configuration validation and host-testable inbox state |
 | `firmware/boards/ai_passport` | BSP, licenses and provenance |
 | `packages/protocol` | Protocol documentation and shared vectors |
 | `deploy` | Compose templates; server-specific mount described above |
@@ -265,7 +270,7 @@ curl -fsS http://127.0.0.1:8080/health/ready
 ```
 
 Local HTTP defaults to 8080; server Docker maps port 3002. Merged firmware is in
-`dist/firmware/board-check/`; Actions uploads firmware and SHA256 files too. Successful builds
+`dist/firmware/board-check/` and `dist/firmware/pocketlink/`; Actions uploads separate firmware and SHA256 files. Successful builds
 are not device validation. Preserve 8 MB Flash, the 3 MB application limit and identity at
 `0x356000`; do not erase the entire chip or publish device identity data.
 

@@ -14,6 +14,13 @@ static() {
         -o "${scratch}/test-ui"
     "${scratch}/test-ui"
     python3 tests/firmware/test_verify_firmware.py
+    for suite in config inbox dns; do
+        cc -std=c11 -Wall -Wextra -Werror -Ifirmware/components/pocketlink_config \
+            "tests/provisioning/test_${suite}.c" firmware/components/pocketlink_config/*.c \
+            -o "${scratch}/test-${suite}"
+        "${scratch}/test-${suite}"
+    done
+    node tests/provisioning/test_portal.cjs
     (
         cd services/relay
         test -z "$(gofmt -l cmd internal)"
@@ -30,18 +37,20 @@ static() {
 firmware() {
     command -v idf.py >/dev/null || { echo "Activate ESP-IDF 5.5.3 first" >&2; return 1; }
     [[ "$(idf.py --version)" == "ESP-IDF v5.5.3" ]] || { echo "ESP-IDF 5.5.3 required" >&2; return 1; }
+    for firmware_app in board-check pocketlink; do
     (
         scratch="$(mktemp -d "${TMPDIR:-/tmp}/pocketlink-firmware.XXXXXX")"
         trap 'rm -rf -- "${scratch}"' EXIT
-        app="${root}/firmware/apps/board-check"
+        app="${root}/firmware/apps/${firmware_app}"
         cd "${app}"
         SDKCONFIG_DEFAULTS="${app}/sdkconfig.defaults" idf.py -B "${scratch}" \
             -D "SDKCONFIG=${scratch}/sdkconfig" build
         idf.py -B "${scratch}" merge-bin -o "${scratch}/FoloToy-AI-Passport-full.bin"
         python3 "${root}/tools/verify_firmware.py" "${scratch}"
-        mkdir -p "${root}/dist/firmware/board-check"
-        cp "${scratch}/FoloToy-AI-Passport-full.bin" "${root}/dist/firmware/board-check/"
+        mkdir -p "${root}/dist/firmware/${firmware_app}"
+        cp "${scratch}/FoloToy-AI-Passport-full.bin" "${root}/dist/firmware/${firmware_app}/"
     )
+    done
 }
 case "${1:---all}" in
     --static) static ;;

@@ -1,0 +1,62 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PocketLink 配网</title>
+<style>body{font:16px system-ui;margin:32px auto;padding:0 20px;max-width:480px;color:#18322d;background:#f1f6f3}h1{font-size:26px}label{display:block;margin:18px 0 6px}input,select,button{box-sizing:border-box;width:100%;padding:12px;font:inherit;border:1px solid #adbbb6;border-radius:8px}button{margin-top:16px;background:#145c48;color:white}small{color:#51645e}#status{white-space:pre-wrap}button:disabled{opacity:.5}</style>
+<h1>PocketLink 设备配网</h1><p>Wi-Fi 密码只保存在设备。仅支持 2.4 GHz 网络。手机提示热点无互联网时，请选择保持连接。</p>
+<form id="form"><label>附近网络</label><select id="networks"><option value="">手动输入 / 隐藏网络</option></select><button id="scan" type="button">扫描 Wi-Fi</button>
+<label for="ssid">Wi-Fi 名称</label><input id="ssid" required maxlength="32" autocomplete="off">
+<label for="password">Wi-Fi 密码</label><input id="password" type="password" maxlength="63" autocomplete="new-password"><small>开放网络可留空；否则至少 8 个字符。</small>
+<label for="host">服务器地址</label><input id="host" value="pocketlink.mcloc.cn" required maxlength="253" autocomplete="off"><small>仅填写域名或 IPv4 地址。连接使用 HTTPS 并验证证书。</small>
+<label for="port">HTTPS 端口</label><input id="port" type="number" min="1" max="65535" value="443" required>
+<label for="code">设备配对码</label><input id="code" maxlength="43" autocomplete="off"><small>提前从管理页复制。已绑定设备更换 Wi-Fi 时留空保留绑定；更换服务器必须填写新配对码。</small>
+<button id="submit">保存并连接</button></form><p id="feedback" role="alert"></p><p id="status" role="status">正在连接设备…</p>
+<script>
+const $=id=>document.getElementById(id);
+let csrf='', configured=false, savedHost='', savedPort=443, busy=false, posting=false, epoch=0, refreshing=false;
+const edited=new Set();
+function enabled(){for(const el of $('form').querySelectorAll('input,select,button'))el.disabled=posting||busy||!csrf}
+async function api(path,body){
+ const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:body?{'Content-Type':'application/json','X-PocketLink-Token':csrf}:{},body:body?JSON.stringify(body):undefined});
+ const data=await r.json();if(!r.ok)throw Error(data.error||'请求失败 '+r.status);return data;
+}
+async function refresh(){
+ if(refreshing)return;refreshing=true;const version=epoch;
+ try{
+  const s=await api('/status');if(version!==epoch)return;
+  csrf=s.token;configured=s.configured;savedHost=s.host;savedPort=s.port;busy=s.busy;
+  $('status').textContent=s.status;
+  for(const field of ['host','port','ssid'])if(!edited.has(field))$(field).value=s[field]??'';
+  if(Array.isArray(s.scan)){
+   const selected=$('networks').value;$('networks').replaceChildren(new Option('手动输入 / 隐藏网络',''));
+   for(const name of s.scan)$('networks').add(new Option(name,name));$('networks').value=selected;
+  }
+ }catch(e){if(version===epoch){csrf='';$('status').textContent='暂时无法连接设备。配网成功后热点会关闭；否则请重新连接设备热点并打开 http://192.168.4.1。'}}
+ finally{refreshing=false;enabled()}
+}
+function validate(payload){
+ const bytes=s=>new TextEncoder().encode(s).length;
+ if(!payload.ssid||bytes(payload.ssid)>32)throw Error('Wi-Fi 名称须为 1–32 字节；中文通常占 3 字节。');
+ if(payload.password&&(bytes(payload.password)<8||bytes(payload.password)>63))throw Error('Wi-Fi 密码须为 8–63 字节，开放网络可留空。');
+ if(!Number.isInteger(payload.port)||payload.port<1||payload.port>65535)throw Error('端口须为 1–65535。');
+ if(!payload.host||payload.host.length>253||!payload.host.split('.').every(s=>s.length<=63&&/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(s)))throw Error('服务器只填写域名或 IPv4 地址，不要包含 https:// 或路径。');
+ if(payload.code&&!/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(payload.code))throw Error('配对码格式无效，请从管理页完整复制 43 个字符。');
+ if(!payload.code&&(!configured||payload.host!==savedHost.toLowerCase()||payload.port!==savedPort))throw Error('首次绑定或更换服务器时，需要填写管理页生成的配对码。');
+}
+async function send(path,body){
+ if(posting||busy||!csrf)return;
+ posting=true;++epoch;enabled();$('feedback').textContent='';
+ try{
+  await api(path,body);busy=true;
+  if(path==='/configure'){$('password').value='';$('code').value='';}
+  $('feedback').textContent=path==='/scan'?'扫描请求已提交。':'配置已提交，请查看设备连接状态；成功后热点将关闭。';
+ }catch(e){$('feedback').textContent=e.message}
+ finally{++epoch;posting=false;enabled();await refresh()}
+}
+$('networks').onchange=()=>{$('ssid').value=$('networks').value;edited.add('ssid')};
+$('form').oninput=e=>{if(e.target.id)edited.add(e.target.id)};
+$('scan').onclick=()=>send('/scan',{});
+$('form').onsubmit=e=>{
+ e.preventDefault();
+ const payload={ssid:$('ssid').value,password:$('password').value,host:$('host').value.trim().toLowerCase(),port:Number($('port').value),code:$('code').value.trim()};
+ try{validate(payload);send('/configure',payload)}catch(error){$('feedback').textContent=error.message}
+};
+enabled();refresh();setInterval(refresh,3000);
+</script></html>

@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Add independent PocketLink development firmware with QR hotspot provisioning, HTTPS pairing, a durable single-message inbox and receipts; add configuration/inbox host tests and dual-firmware CI. Physical-device acceptance is pending.
+
 - Add room permissions, idempotent text sending, offline queues, per-device received/read receipts and WSS transport with console history.
 
 - Default documentation to Chinese with English switching; expand the README with deployment, usage, upgrades, backup/recovery and troubleshooting.

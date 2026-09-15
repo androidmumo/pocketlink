@@ -48,4 +48,9 @@ When authentication is configured, it also serves device administration.
 - No production deployment in P0/P1. No game engine, E2EE or clustering in v1.
 
 P2a now provides optional administrator login, one-time pairing, device listing and revocation.
-See [authentication](../development/authentication.en.md). P2 rooms, text, receipts and WSS are implemented; see [messaging](../development/messaging.en.md). Device firmware remains P3.
+See [authentication](../development/authentication.en.md). P2 rooms, text, receipts and WSS are implemented; see [messaging](../development/messaging.en.md). Device firmware is in P3 development and acceptance.
+
+P3 development firmware source now implements a SoftAP local provisioning page, HTTPS
+pairing and text polling every five seconds. Only the current message is stored on-device;
+other pending messages remain on the server. See [device design](../development/device-provisioning.en.md).
+P3 has not passed two-device acceptance and is not a completed milestone.

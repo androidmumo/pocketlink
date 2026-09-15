@@ -65,3 +65,8 @@ No workflow holds production SSH credentials or deploys production.
 See [authentication](authentication.en.md) to enable the console and device endpoints using
 an HTTPS origin and password file. Frontend assets are dependency-free and embedded directly;
 Node.js 24 is used for JavaScript syntax validation, not bundling.
+
+`--firmware` builds both `board-check` and `pocketlink`; the latter outputs to
+`dist/firmware/pocketlink/`. Both dependency locks remain pinned and CI uploads separate
+artifacts. Host checks include configuration, inbox state and phone-page logic.
+See [device provisioning](device-provisioning.en.md).

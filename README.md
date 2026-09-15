@@ -5,8 +5,9 @@
 一个仓库，管理口袋设备固件、中转服务和网页管理端，后续扩展联机游戏与其他应用。
 
 **当前是 P2 体验版：提供设备管理、房间成员权限、文字发送、离线补发和逐设备回执。**
-设备收信固件和语音对讲尚未实现。`board-check` 是硬件演示基线，
-不是对讲机固件，也不能用它完成目前的设备配对。
+新增 **P3 设备开发版**：二维码热点配网、HTTPS 配对与文字收信，尚待真机验收。
+语音尚未实现。`board-check` 仍只是硬件诊断；设备功能请使用 `pocketlink` 固件。
+[设备配网与刷机教程](docs/development/device-provisioning.md)
 
 [功能与使用](#使用管理页) · [部署](#首次部署到新服务器) · [维护与升级](#日常维护与升级) · [备份恢复](#备份与恢复) · [常见问题](#常见问题) · [开发](#本地开发与仓库结构)
 
@@ -35,8 +36,9 @@
    这是单管理员登录，没有用户名、注册或默认密码。不要把密码提交到 Git 或发送到公开聊天。
 2. 用 HTTPS 打开管理页，粘贴密码并登录。登录会话最多保留 12 小时；服务重启后需要重新登录。
 3. 输入设备名称并点击“生成配对码”。名称最多 40 个字符，配对码有效期 10 分钟，且只能使用一次。
-4. 后续设备配置流程将把配对码传给设备。目前设备端配对固件尚未实现，**仅生成配对码不会自动添加设备**。
-   开发者可按[鉴权接口](docs/development/authentication.md)调用 `/api/v1/device/pair`，换取设备专属凭证。
+4. 使用 `pocketlink` 开发固件时，扫码连接设备热点，在本地页面填写 Wi-Fi 和配对码。
+   详见[设备配网](docs/development/device-provisioning.md)。**仅生成配对码不会自动添加设备**；
+   设备成功联网并提交配对码后才会出现。开发者也可按[鉴权接口](docs/development/authentication.md)联调。
 5. 设备配对成功后点击“刷新”。列表中的“有效”表示凭证有效，**不是在线状态**。
 6. 丢失设备或需要更换凭证时点击“撤销凭证”。旧密钥立即失效；同一 SN 需要先撤销再重新配对。
 7. 使用完点击“退出登录”。若配对响应丢失，无法找回设备密钥，应撤销该设备并生成新配对码。
@@ -228,6 +230,8 @@ curl -fsS http://127.0.0.1:3002/health/ready
 | `services/relay` | Go 服务、鉴权、SQLite、协议解析 |
 | `apps/console` | 随服务嵌入的网页管理端，无第三方前端依赖 |
 | `firmware/apps/board-check` | 独立 ESP-IDF 硬件基线 |
+| `firmware/apps/pocketlink` | 二维码配网、绑定与文字接收开发固件 |
+| `firmware/components/pocketlink_config` | 配置校验与可主机测试的消息状态 |
 | `firmware/boards/ai_passport` | BSP、许可证与导入来源 |
 | `packages/protocol` | 协议文档与共享测试向量 |
 | `deploy` | Compose 模板；实际服务器挂载见上文 |
@@ -247,7 +251,7 @@ curl -fsS http://127.0.0.1:8080/health/ready
 ```
 
 本地服务默认端口是 8080，服务器 Docker 映射端口是 3002。固件合并包在
-`dist/firmware/board-check/`，GitHub Actions 也会上传固件及 SHA256 文件。
+`dist/firmware/board-check/` 和 `dist/firmware/pocketlink/`，GitHub Actions 分别上传固件及 SHA256 文件。
 构建通过不代表真机验证：必须保护 8 MB Flash、3 MB 应用上限，以及 `0x356000` 的设备身份分区，
 不要擦除整片 Flash 或把设备身份数据加入发布物。
 

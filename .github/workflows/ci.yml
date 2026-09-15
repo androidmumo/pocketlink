@@ -2,7 +2,7 @@ name: Foundation CI
 on:
   push:
     branches: [main, 'codex/**']
-    tags: ['relay/v*', 'firmware/board-check/v*']
+    tags: ['relay/v*', 'firmware/board-check/v*', 'firmware/pocketlink/v*']
   pull_request:
   workflow_dispatch:
 
@@ -47,16 +47,23 @@ jobs:
         run: |
           lock_checksum="$(mktemp)"
           trap 'rm -f "$lock_checksum"' EXIT
-          sha256sum firmware/apps/board-check/dependencies.lock > "$lock_checksum"
+          sha256sum firmware/apps/*/dependencies.lock > "$lock_checksum"
           source /opt/esp/idf/export.sh
           ./tools/validate.sh --firmware
           sha256sum --check "$lock_checksum"
-          cd dist/firmware/board-check
-          sha256sum FoloToy-AI-Passport-full.bin > SHA256SUMS
+          for app in board-check pocketlink; do
+            (cd "dist/firmware/$app" && sha256sum FoloToy-AI-Passport-full.bin > SHA256SUMS)
+          done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: board-check-${{ github.sha }}
           path: dist/firmware/board-check/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: pocketlink-${{ github.sha }}
+          path: dist/firmware/pocketlink/
           if-no-files-found: error
           retention-days: 14
 

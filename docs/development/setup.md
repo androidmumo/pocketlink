@@ -58,3 +58,7 @@ main 生成 `edge` 及提交标签；relay 标签生成对应版本和提交标�
 
 通过 HTTPS 来源和密码文件启用管理页及设备接口，见[鉴权说明](authentication.md)。
 前端无第三方依赖，直接嵌入源码资源；Node.js 24 用于 JavaScript 语法检查，无需打包工具。
+
+`--firmware` 同时构建 `board-check` 与 `pocketlink`，后者产物位于 `dist/firmware/pocketlink/`。
+两者依赖锁均须保持固定，CI 分别上传附件。新增配置、收信状态和手机页面逻辑主机测试。
+配网开发固件使用教程见[设备配网](device-provisioning.md)。

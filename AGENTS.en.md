@@ -10,7 +10,7 @@ Read this file first. Read [architecture](docs/architecture/overview.en.md) for 
 - Use `codex/*` branches. Use English Conventional Commit subjects. The user authorizes
   commits and pushes after relevant checks pass, and deployment of this project's
   validated versions; this does not authorize changes to unrelated services.
-- Do not implement or advertise later milestones as completed. Current scope is P2 rooms and reliable text; device firmware and audio remain pending.
+- Do not implement or advertise later milestones as completed. Current scope includes the P2 server and P3 provisioning/reception development firmware; device acceptance and audio remain pending.
 - Run `./tools/validate.sh --static`; run `--firmware` with ESP-IDF 5.5.3 when
   board code, baseline code, dependencies or firmware build tools change.
 - Keep business state/protocols testable independently from UI and hardware.
