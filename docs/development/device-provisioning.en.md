@@ -144,3 +144,5 @@ flash hardware. After flashing, verify reset into the application before device 
 Host tests cover configuration boundaries, base64url credentials, UTF-8, JSON depth, malformed DNS,
 inbox state recovery and page slow responses, duplicate submission and error recovery.
 Actual radio, button, display and physical power-loss behavior still need device acceptance.
+
+Signed OTA source and usage (device acceptance pending): [OTA](firmware-ota.en.md)

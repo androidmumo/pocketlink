@@ -38,7 +38,7 @@ func TestPersistenceAndPragmas(t *testing.T) {
 	}
 	var count int
 	_ = s.db.QueryRow("SELECT COUNT(*) FROM schema_migrations").Scan(&count)
-	if count != 3 {
+	if count != 4 {
 		t.Fatal(count)
 	}
 	if err = s.Ready(ctx); err != nil {
@@ -62,11 +62,13 @@ func TestMigrationFailureIsAtomic(t *testing.T) {
 	first, _ := migrations.ReadFile("migrations/001_metadata.sql")
 	second, _ := migrations.ReadFile("migrations/002_devices.sql")
 	third, _ := migrations.ReadFile("migrations/003_messages.sql")
+	fourth, _ := migrations.ReadFile("migrations/004_firmware.sql")
 	source := fstest.MapFS{
 		"migrations/001_metadata.sql": &fstest.MapFile{Data: first},
 		"migrations/002_devices.sql":  &fstest.MapFile{Data: second},
 		"migrations/003_messages.sql": &fstest.MapFile{Data: third},
-		"migrations/004_bad.sql":      &fstest.MapFile{Data: []byte("CREATE TABLE partial (id INTEGER); INSERT INTO nonexistent VALUES(1);")},
+		"migrations/004_firmware.sql": &fstest.MapFile{Data: fourth},
+		"migrations/005_bad.sql":      &fstest.MapFile{Data: []byte("CREATE TABLE partial (id INTEGER); INSERT INTO nonexistent VALUES(1);")},
 	}
 	if err = migrate(ctx, s.db, source); err == nil {
 		t.Fatal("accepted bad SQL")
@@ -77,7 +79,7 @@ func TestMigrationFailureIsAtomic(t *testing.T) {
 		t.Fatal("partial migration committed")
 	}
 	_ = s.db.QueryRow("SELECT count(*) FROM schema_migrations").Scan(&n)
-	if n != 3 {
+	if n != 4 {
 		t.Fatal("bad migration recorded")
 	}
 }

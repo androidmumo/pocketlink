@@ -107,3 +107,5 @@ idf.py -p /dev/cu.YOUR_DEVICE flash monitor
 
 主机测试覆盖配置边界、base64url 凭证、UTF-8、JSON 深度、DNS 畸形报文、消息状态恢复，以及页面慢响应、重复提交、
 错误恢复。上述真实无线、按键、显示和掉电行为仍待设备验收。
+
+签名 OTA 源码及使用教程（真机验收待完成）：[OTA](firmware-ota.md)

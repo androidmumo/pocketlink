@@ -13,5 +13,6 @@
 <p>勾选即加入房间。新成员只收到加入后发送的消息；移除后停止投递旧消息。</p><div id="room-members"></div>
 <form id="message-form"><label for="message-text">发送文字</label><textarea id="message-text" rows="4" maxlength="400" required placeholder="最多 200 个字符"></textarea><div class="row"><span id="text-count">0 / 200</span><button id="send-text" type="submit">发送到房间</button></div></form>
 <div class="row"><h3>消息记录</h3><button id="refresh-messages" class="secondary">刷新记录</button></div><p>待接收表示已保存至服务端；接收与已读状态以设备回执为准。</p><ul id="message-history"></ul><button id="older-messages" class="secondary" hidden>加载更早消息</button></div>
-</section></div>
-<footer>文字可发送至已配对的房间成员；设备收信固件与语音对讲仍在开发。</footer></main></body></html>
+</section>
+<section><h2>固件升级</h2><p>上传签名升级包后再发布。最多保存 8 个版本，设备需要按键确认；“已发布”不表示已经升级。</p><form id="firmware-form"><label for="firmware-manifest">签名清单 manifest.json</label><input id="firmware-manifest" type="file" accept=".json" required><label for="firmware-image">应用固件 pocketlink-ota.bin（最多 3 MiB）</label><input id="firmware-image" type="file" accept=".bin" required><p>请选择同一次打包的两个文件，不要上传 full.bin 整包。</p><button type="submit">校验并保存</button></form><ul id="firmware-list"></ul></section></div>
+<footer>文字可发送至已配对的房间成员；收信与 OTA 固件仍需真机验收，语音对讲尚未完成。</footer></main></body></html>

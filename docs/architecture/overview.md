@@ -42,3 +42,5 @@ P2 房间、文字、回执和 WSS 已实现，详见[文字协议](../developme
 P3 开发固件源码已加入：采用设备 SoftAP 本地网页配网、HTTPS 绑定与每 5 秒轮询文字。
 仅保存当前一条消息，更多未读保留在服务器；详见[设备方案](../development/device-provisioning.md)。
 P3 尚未通过两台真机验收，不能视为阶段完成。
+
+签名 OTA 源码及使用教程（真机验收待完成）：[OTA](../development/firmware-ota.md)

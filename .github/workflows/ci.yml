@@ -52,7 +52,7 @@ jobs:
           ./tools/validate.sh --firmware
           sha256sum --check "$lock_checksum"
           for app in board-check pocketlink; do
-            (cd "dist/firmware/$app" && sha256sum FoloToy-AI-Passport-full.bin > SHA256SUMS)
+            (cd "dist/firmware/$app" && sha256sum *.bin > SHA256SUMS)
           done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

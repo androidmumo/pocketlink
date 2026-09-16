@@ -20,7 +20,11 @@ static() {
             -o "${scratch}/test-${suite}"
         "${scratch}/test-${suite}"
     done
+    cc -std=c11 -Wall -Wextra -Werror -Itests/ota/stubs -Ifirmware/components/pocketlink_ota -Ifirmware/components/pocketlink_config \
+        tests/ota/test_boot.c firmware/components/pocketlink_ota/ota_boot.c -o "${scratch}/test-ota-boot"
+    "${scratch}/test-ota-boot"
     node tests/provisioning/test_portal.cjs
+    node tests/ota/test_console.cjs
     (
         cd services/relay
         test -z "$(gofmt -l cmd internal)"
@@ -37,6 +41,7 @@ static() {
 firmware() {
     command -v idf.py >/dev/null || { echo "Activate ESP-IDF 5.5.3 first" >&2; return 1; }
     [[ "$(idf.py --version)" == "ESP-IDF v5.5.3" ]] || { echo "ESP-IDF 5.5.3 required" >&2; return 1; }
+    ./tools/test-ota-parser.sh
     for firmware_app in board-check pocketlink; do
     (
         scratch="$(mktemp -d "${TMPDIR:-/tmp}/pocketlink-firmware.XXXXXX")"
@@ -49,6 +54,9 @@ firmware() {
         python3 "${root}/tools/verify_firmware.py" "${scratch}"
         mkdir -p "${root}/dist/firmware/${firmware_app}"
         cp "${scratch}/FoloToy-AI-Passport-full.bin" "${root}/dist/firmware/${firmware_app}/"
+        if [[ "${firmware_app}" == pocketlink ]]; then
+            cp "${scratch}/FoloToy-AI-Passport.bin" "${root}/dist/firmware/${firmware_app}/pocketlink-ota.bin"
+        fi
     )
     done
 }

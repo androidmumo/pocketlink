@@ -10,7 +10,7 @@ not the original workspace's uncommitted changes.
 
 `firmware/apps/board-check` is a diagnostic demo only. CMake locates this shared
 BSP through `EXTRA_COMPONENT_DIRS`; original application/merged image names are
-retained so the upstream firmware verifier remains unchanged.
+retained; the adapted verifier checks both diagnostic and PocketLink OTA layouts.
 
 Hardware: ESP32-C3, 8 MB Flash, no PSRAM; ST7789P3 240x320 screen; three ADC-ladder
 buttons; ES8311 audio; CW2017 battery gauge. Pins and thresholds live in
@@ -23,3 +23,5 @@ Use segmented `idf.py flash`; raw merged flashing is allowed only if its full
 byte range ends before cardid or the target is blank. No device flashing is part
 of this foundation delivery. Radio range, audio quality and battery life remain
 unverified until physical acceptance tests.
+
+The firmware verifier is now adapted (recorded in upstream.json) to accept PocketLink A/B slots while retaining the diagnostic factory layout and protected identity checks. See the OTA guide for migration.

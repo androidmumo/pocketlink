@@ -1,0 +1,79 @@
+name: Signed firmware package
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (ASCII letters, digits, dot, dash, underscore; max 32)'
+        required: true
+        type: string
+      sequence:
+        description: 'Increasing release sequence (1..2147483647, never reuse)'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: signed-firmware
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    container:
+      image: espressif/idf:v5.5.3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Build and verify firmware
+        shell: bash
+        run: |
+          source /opt/esp/idf/export.sh
+          ./tools/validate.sh --firmware
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: unsigned-application
+          path: dist/firmware/pocketlink/pocketlink-ota.bin
+          if-no-files-found: error
+          retention-days: 1
+  sign:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.26.8'
+          cache-dependency-path: services/relay/go.sum
+      - name: Check source before signing
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          ./tools/validate.sh --static
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: unsigned-application
+          path: dist/unsigned
+      - name: Sign package
+        env:
+          SIGNING_KEY: ${{ secrets.POCKETLINK_FIRMWARE_SIGNING_KEY }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_SEQUENCE: ${{ inputs.sequence }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SIGNING_KEY" || { echo 'Configure POCKETLINK_FIRMWARE_SIGNING_KEY first'; exit 1; }
+          umask 077
+          signing_file="$(mktemp)"
+          trap 'rm -f "$signing_file"' EXIT
+          printf '%s\n' "$SIGNING_KEY" > "$signing_file"
+          unset SIGNING_KEY
+          cd services/relay
+          go run ./cmd/fwtool -key "$signing_file" -image ../../dist/unsigned/pocketlink-ota.bin -version "$RELEASE_VERSION" -sequence "$RELEASE_SEQUENCE" -out ../../dist/signed
+          cd ../../dist/signed
+          sha256sum manifest.json pocketlink-ota.bin > SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: signed-pocketlink-${{ github.run_id }}
+          path: dist/signed/
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,3 @@
+CREATE TABLE firmware_releases(sha256 TEXT PRIMARY KEY,version TEXT NOT NULL,sequence INTEGER NOT NULL UNIQUE,size INTEGER NOT NULL,manifest BLOB NOT NULL,image BLOB NOT NULL,created_at INTEGER NOT NULL);
+CREATE TABLE firmware_channel(id INTEGER PRIMARY KEY CHECK(id=1),sha256 TEXT REFERENCES firmware_releases(sha256),max_sequence INTEGER NOT NULL DEFAULT 0);
+INSERT INTO firmware_channel(id,sha256) VALUES(1,NULL);

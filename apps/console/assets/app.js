@@ -10,7 +10,7 @@ let pendingSend = null;
 function status(text) { $("status").textContent = text; }
 function loggedIn(yes) {
   $("login").hidden = yes; $("workspace").hidden = !yes;
-  if (!yes) { clearTimeout(expiryTimer); $("pair-code").textContent = ""; $("pair-result").hidden = true; $("devices").replaceChildren(); $("room-detail").hidden=true; $("room-select").replaceChildren(); $("message-text").value=""; pendingSend=null; roomEpoch++; }
+  if (!yes) { $("firmware-form").reset(); $("firmware-list").replaceChildren(); clearTimeout(expiryTimer); $("pair-code").textContent = ""; $("pair-result").hidden = true; $("devices").replaceChildren(); $("room-detail").hidden=true; $("room-select").replaceChildren(); $("message-text").value=""; pendingSend=null; roomEpoch++; }
 }
 async function api(path, method = "GET", data) {
   const response = await fetch("/api/v1/" + path, {method, credentials:"same-origin", headers: data ? {"Content-Type":"application/json"} : {}, body: data ? JSON.stringify(data) : undefined});
@@ -41,6 +41,7 @@ async function refresh() {
     $("devices").append(item);
   }
   await refreshRooms();
+  await refreshFirmware();
 }
 async function perform(button, action) {button.disabled = true; status(""); try {await action();} catch(error) {status(error.message);} finally {button.disabled = false;}}
 $("login-form").onsubmit = event => {event.preventDefault(); perform(event.submitter, async () => {try {await api("auth/login", "POST", {password:$("password").value});} finally {$("password").value="";} loggedIn(true); await refresh();});};
@@ -102,4 +103,34 @@ $("message-form").onsubmit=event=>{event.preventDefault();perform(event.submitte
 });};
 $("refresh-messages").onclick=()=>perform($("refresh-messages"),()=>loadHistory(false));
 $("older-messages").onclick=()=>perform($("older-messages"),()=>loadHistory(true));
+async function refreshFirmware() {
+  const {releases}=await api("firmware");
+  $("firmware-list").replaceChildren();
+  if(!releases.length) $("firmware-list").textContent="尚未上传固件。";
+  for(const release of releases) {
+    const item=document.createElement("li"), label=document.createElement("span");
+    label.textContent=`${release.version} · 序号 ${release.sequence} · ${Math.ceil(release.size/1024)} KiB · ${release.active?"已发布":"未发布"}`;
+    item.append(label);
+    const publish=document.createElement("button");publish.className="secondary";publish.textContent=release.active?"撤回发布":"发布";
+    publish.onclick=()=>perform(publish,async()=>{
+      if(!confirm(release.active?"撤回后停止新的下载，已经开始的升级可能继续。确认撤回？":`发布 ${release.version}？设备检查后仍需按键确认升级。`))return;
+      await api("firmware/channel","PUT",{sha256:release.active?"":release.sha256});await refreshFirmware();status("发布设置已保存；这不表示设备已升级。");
+    });item.append(publish);
+    if(!release.active){const remove=document.createElement("button");remove.className="secondary";remove.textContent="删除";remove.onclick=()=>perform(remove,async()=>{if(!confirm(`删除 ${release.version} 的升级包？其序号不能重复使用。`))return;await api("firmware/"+release.sha256,"DELETE");await refreshFirmware();});item.append(remove);}
+    $("firmware-list").append(item);
+  }
+}
+$("firmware-form").onsubmit=event=>{event.preventDefault();perform(event.submitter,async()=>{
+  const manifest=$("firmware-manifest").files[0],image=$("firmware-image").files[0];
+  if(!manifest||!image||manifest.size>4096||image.size<288||image.size>3*1024*1024)throw new Error("请选择签名清单和不超过 3 MiB 的应用固件。");
+  const form=new FormData();form.append("manifest",manifest);form.append("image",image);
+  $("firmware-manifest").disabled=true;$("firmware-image").disabled=true;
+  try {
+    const response=await fetch("/api/v1/firmware",{method:"POST",credentials:"same-origin",body:form});
+    if(response.status===401)loggedIn(false);
+    if(!response.ok)throw new Error(response.status===409?"序号必须递增，同一固件不能重复签名上传；请检查已有版本。":response.status===400?"签名、目标设备或固件校验不通过。":response.status===429?"请求过多或存储已满，请稍后重试或删除旧版本。":"上传失败，请确认登录和服务器状态。");
+    $("firmware-form").reset();await refreshFirmware();status("升级包已校验并保存，点击发布后设备才能发现更新。");
+  } finally {$("firmware-manifest").disabled=false;$("firmware-image").disabled=false;}
+});};
+
 (async()=>{try {await api("auth/me"); loggedIn(true); await refresh();} catch(error) {loggedIn(false); if (!error.message.startsWith("登录")) status(error.message);}})();

@@ -22,13 +22,21 @@ sys.modules[SPEC.name] = VERIFY
 SPEC.loader.exec_module(VERIFY)
 
 
-def sample_table() -> bytes:
+def sample_table(ota: bool = False) -> bytes:
     entries = (
         (1, 2, 0x9000, 0x6000, "nvs"),
         (1, 1, 0xF000, 0x1000, "phy_init"),
         (0, 0, 0x10000, 0x300000, "factory"),
         (1, 2, 0x356000, 0x4000, "cardid"),
     )
+    if ota:
+        entries = entries[:2] + (
+            (0, 0x10, 0x10000, 0x300000, "ota_0"),
+            (1, 0, 0x310000, 0x2000, "otadata"),
+            (1, 2, 0x356000, 0x4000, "cardid"),
+            (1, 2, 0x35a000, 0x10000, "pocketcfg"),
+            (0, 0x11, 0x370000, 0x300000, "ota_1"),
+        )
     raw = bytearray(b"\xff" * VERIFY.PARTITION_TABLE_SIZE)
     for index, (kind, subtype, offset, size, label) in enumerate(entries):
         VERIFY.ENTRY.pack_into(
@@ -75,6 +83,36 @@ class ProtectedLayoutTest(unittest.TestCase):
             build_dir = Path(directory)
             (build_dir / "FoloToy-AI-Passport.bin").write_bytes(b"\xe9")
             VERIFY.verify_protected_layout(bytes(merged), build_dir)
+
+    def test_ota_layout_preserves_identity_and_configuration(self) -> None:
+        merged = bytearray(b"\xff" * (0x10000 + 1))
+        merged[0x8000:0x8000 + VERIFY.PARTITION_TABLE_SIZE] = sample_table(True)
+        merged[0x10000] = 0xe9
+        with tempfile.TemporaryDirectory() as directory:
+            build = Path(directory)
+            (build / "FoloToy-AI-Passport.bin").write_bytes(b"\xe9")
+            VERIFY.verify_protected_layout(bytes(merged), build)
+            # A protection-region payload must always be rejected.
+            merged.extend(b"\xff" * (VERIFY.CARDID_OFFSET + 1 - len(merged)))
+            merged[VERIFY.CARDID_OFFSET] = 0
+            with self.assertRaisesRegex(ValueError, "cardid payload"):
+                VERIFY.verify_protected_layout(bytes(merged), build)
+
+    def test_rejects_displaced_ota_slots_and_configuration(self) -> None:
+        for index in (2, 3, 5, 6):
+            with self.subTest(partition=index), tempfile.TemporaryDirectory() as directory:
+                table = bytearray(sample_table(True))
+                offset = index * VERIFY.ENTRY.size + 4
+                struct.pack_into("<I", table, offset, struct.unpack_from("<I", table, offset)[0] + 0x1000)
+                marker = 7 * VERIFY.ENTRY.size
+                table[marker + 16:marker + 32] = hashlib.md5(table[:marker]).digest()
+                merged = bytearray(b"\xff" * (0x10000 + 1))
+                merged[0x8000:0x8000 + len(table)] = table
+                merged[0x10000] = 0xe9
+                build = Path(directory)
+                (build / "FoloToy-AI-Passport.bin").write_bytes(b"\xe9")
+                with self.assertRaisesRegex(ValueError, "must remain"):
+                    VERIFY.verify_protected_layout(bytes(merged), build)
 
 
 if __name__ == "__main__":

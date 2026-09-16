@@ -80,10 +80,22 @@ def verify_protected_layout(merged: bytes, build_dir: Path) -> None:
         raise ValueError("partition table has no MD5 marker")
 
     by_label = {item.label: item for item in partitions}
-    expected = {
-        "factory": Partition(0, 0, 0x10000, APP_MAX_SIZE, "factory"),
-        "cardid": Partition(1, 2, CARDID_OFFSET, CARDID_SIZE, "cardid"),
-    }
+    if len(by_label) != len(partitions):
+        raise ValueError("duplicate partition label")
+    expected = {"cardid": Partition(1, 2, CARDID_OFFSET, CARDID_SIZE, "cardid")}
+    if "factory" in by_label:
+        expected["factory"] = Partition(0, 0, 0x10000, APP_MAX_SIZE, "factory")
+        if any(p.kind == 0 and p.label != "factory" for p in partitions):
+            raise ValueError("unexpected extra application in diagnostic layout")
+    else:
+        expected.update({
+            "ota_0": Partition(0, 0x10, 0x10000, APP_MAX_SIZE, "ota_0"),
+            "ota_1": Partition(0, 0x11, 0x370000, APP_MAX_SIZE, "ota_1"),
+            "otadata": Partition(1, 0, 0x310000, 0x2000, "otadata"),
+            "pocketcfg": Partition(1, 2, 0x35a000, 0x10000, "pocketcfg"),
+        })
+        if any(p.kind == 0 and p.label not in {"ota_0", "ota_1"} for p in partitions):
+            raise ValueError("unexpected OTA application partition")
     for label, wanted in expected.items():
         if by_label.get(label) != wanted:
             raise ValueError(f"partition {label!r} must remain {wanted}, got {by_label.get(label)}")
@@ -140,6 +152,13 @@ def main() -> int:
             print(f"ERROR: {relative_name} differs at merged offset 0x{offset:x}", file=sys.stderr)
             return 1
         print(f"Verified {relative_name}: {len(image)} bytes at 0x{offset:x}")
+
+    ota_initial = build_dir / "ota_data_initial.bin"
+    if ota_initial.exists():
+        initial = ota_initial.read_bytes()
+        if len(initial) != 0x2000 or any(b != 0xff for b in initial) or merged[0x310000:0x312000] != initial:
+            print("ERROR: OTA initial state must be blank at 0x310000", file=sys.stderr)
+            return 1
 
     if len(merged) > FLASH_SIZE:
         print("ERROR: merged firmware exceeds 8 MB", file=sys.stderr)

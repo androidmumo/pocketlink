@@ -204,7 +204,7 @@
       "upstream_path": "tools/verify_firmware.py",
       "path": "tools/verify_firmware.py",
       "upstream_sha256": "9f670f7f1a35e9c05301b6f97bb6b358a200057732c719bdd036cc407ec58abf",
-      "adapted": false
+      "adapted": true
     },
     {
       "upstream_path": "tests/test_verify_firmware.py",

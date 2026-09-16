@@ -70,3 +70,5 @@ Node.js 24 is used for JavaScript syntax validation, not bundling.
 `dist/firmware/pocketlink/`. Both dependency locks remain pinned and CI uploads separate
 artifacts. Host checks include configuration, inbox state and phone-page logic.
 See [device provisioning](device-provisioning.en.md).
+
+Signed OTA source and usage (device acceptance pending): [OTA](firmware-ota.en.md)

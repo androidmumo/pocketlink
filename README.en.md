@@ -7,7 +7,7 @@ with future expansion into multiplayer games and other applications.
 
 **Current release: P2 trial with device management, room permissions, text sending, offline delivery and per-device receipts.**
 A new **P3 device development build** implements QR hotspot provisioning, HTTPS pairing
-and text reception, pending physical-device acceptance. Voice is not implemented.
+text reception and signed OTA, pending physical-device acceptance. Voice is not implemented.
 Use `pocketlink` firmware for device features; `board-check` remains hardware diagnostics.
 [Device provisioning and flashing guide](docs/development/device-provisioning.en.md)
 
@@ -58,7 +58,7 @@ automatic device-token expiry or multi-administrator account system yet.
 
 Create a room, check paired devices as members, then send up to 200 characters. Messages persist before delivery;
 view/refresh receipts in history for pending, received, read or withdrawn status. New members do not receive history;
-removing members or archiving withdraws delivery rights. Physical reception still needs upcoming firmware.
+removing members or archiving withdraws delivery rights. Physical reception uses the development firmware and remains subject to device acceptance.
 Retry identical content after network failure; check history before resending after reload. See the [text/WSS contract](docs/development/messaging.en.md).
 
 ## First deployment on a new server
@@ -286,3 +286,5 @@ with reciprocal links at the top. Update both languages and distinguish plans fr
 
 No project-wide license has been selected. Imported AI Passport source retains its MIT license;
 dependency licenses remain applicable.
+
+Signed OTA source and usage (device acceptance pending): [OTA](docs/development/firmware-ota.en.md)

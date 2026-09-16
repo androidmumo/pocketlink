@@ -62,3 +62,5 @@ main 生成 `edge` 及提交标签；relay 标签生成对应版本和提交标�
 `--firmware` 同时构建 `board-check` 与 `pocketlink`，后者产物位于 `dist/firmware/pocketlink/`。
 两者依赖锁均须保持固定，CI 分别上传附件。新增配置、收信状态和手机页面逻辑主机测试。
 配网开发固件使用教程见[设备配网](device-provisioning.md)。
+
+签名 OTA 源码及使用教程（真机验收待完成）：[OTA](firmware-ota.md)

@@ -34,9 +34,9 @@ for path in files(ROOT):
                 destination = path.parent / target.split("#")[0]
                 if not destination.exists():
                     errors.append(f"{relative}: broken link {target}")
-    if path.suffix in {".pem", ".key", ".db"} or path.name == ".env":
+    if (path.suffix in {".pem", ".key", ".db"} and relative.as_posix() not in {"services/relay/internal/firmware/trust.pem", "firmware/components/pocketlink_ota/trust.pem"}) or path.name == ".env":
         errors.append(f"{relative}: private/generated file in source tree")
-    if path.suffix in {".go", ".py", ".md", ".yaml", ".yml", ".json", ".sh"}:
+    if path.suffix in {".go", ".py", ".md", ".yaml", ".yml", ".json", ".sh", ".pem", ".c", ".h"}:
         if re.search(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", path.read_text()):
             errors.append(f"{relative}: private key material")
 
@@ -49,6 +49,10 @@ manifest = json.loads((ROOT / "firmware/boards/ai_passport/upstream.json").read_
 for item in manifest["files"]:
     if not item["adapted"] and hashlib.sha256((ROOT/item["path"]).read_bytes()).hexdigest() != item["upstream_sha256"]:
         errors.append(f"{item['path']}: unreviewed change to pinned upstream baseline")
+
+trust = ROOT / "services/relay/internal/firmware/trust.pem"
+if trust.read_bytes() != (ROOT / "firmware/components/pocketlink_ota/trust.pem").read_bytes() or not trust.read_bytes().startswith(b"-----BEGIN PUBLIC KEY-----"):
+    errors.append("OTA trust keys must be public and identical")
 
 if errors:
     print("\n".join(errors), file=sys.stderr)

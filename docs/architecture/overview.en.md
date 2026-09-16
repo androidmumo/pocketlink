@@ -54,3 +54,5 @@ P3 development firmware source now implements a SoftAP local provisioning page, 
 pairing and text polling every five seconds. Only the current message is stored on-device;
 other pending messages remain on the server. See [device design](../development/device-provisioning.en.md).
 P3 has not passed two-device acceptance and is not a completed milestone.
+
+Signed OTA source and usage (device acceptance pending): [OTA](../development/firmware-ota.en.md)

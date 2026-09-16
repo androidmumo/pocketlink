@@ -37,6 +37,8 @@
 #include "pocketlink_config.h"
 #include "pocketlink_inbox.h"
 #include "pocketlink_dns.h"
+#include "pocketlink_ota.h"
+#include "esp_system.h"
 
 #define AP_IP "192.168.4.1"
 #define AP_ORIGIN "http://" AP_IP
@@ -65,7 +67,8 @@ static QueueHandle_t commands;
 static EventGroupHandle_t events;
 static nvs_handle_t storage;
 static httpd_handle_t http;
-static bool ap_active, busy, url_qr;
+static bool ap_active, busy, url_qr, ota_prompt;
+static pl_ota_offer ota_offer;
 static char status_text[160] = "正在启动";
 static char token[33], ap_name[33], ap_password[17], serial[32];
 static char scan_names[16][33];
@@ -106,13 +109,20 @@ static void render(void) {
             lv_label_set_text(title, "二维码生成失败，请手动连接");
         }
         lv_label_set_text_fmt(hint, "%s\n密码 %s\n确定切换 · 10分钟后关闭", ap_name, ap_password);
+    } else if (ota_prompt) {
+        lv_obj_add_flag(qr, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(message_box, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(title, "发现固件更新");
+        lv_label_set_text_fmt(message_label, "版本 %s\n序号 %lld\n大小 %d KB\n\n签名已验证。\n升级期间请保持供电。", ota_offer.version, (long long)ota_offer.sequence, ota_offer.size / 1024);
+        lv_obj_scroll_to_y(message_box, 0, LV_ANIM_OFF);
+        lv_label_set_text(hint, "长按下键：确认升级\n确定：取消");
     } else {
         lv_obj_add_flag(qr, LV_OBJ_FLAG_HIDDEN);
         lv_obj_remove_flag(message_box, LV_OBJ_FLAG_HIDDEN);
         lv_label_set_text(title, saved.inbox.id ? "收到文字消息" : "PocketLink");
         lv_label_set_text(message_label, saved.inbox.id ? saved.inbox.text : "等待消息\n\n长按确定键开始配网");
         lv_obj_scroll_to_y(message_box, 0, LV_ANIM_OFF);
-        lv_label_set_text(hint, "上下：滚动 · 确定：已读\n长按确定：重新配网");
+        lv_label_set_text(hint, "上下：滚动 · 确定：已读\n长按确定配网 · 长按上键查更新");
     }
     bsp_lvgl_unlock();
 }
@@ -182,12 +192,13 @@ static cJSON *relay_request(const pl_config *config, const char *path, const cha
     int64_t declared = esp_http_client_fetch_headers(client);
     *status = esp_http_client_get_status_code(client);
     if (declared < 0 || declared > REPLY_LIMIT || *status < 200 || *status >= 300) goto done;
-    reply = malloc(REPLY_LIMIT + 1);
+    size_t capacity = declared > 0 ? (size_t)declared : REPLY_LIMIT;
+    reply = malloc(capacity + 1);
     if (!reply) goto done;
     size_t received = 0;
-    while (received < REPLY_LIMIT) {
+    while (received < capacity) {
         if (esp_timer_get_time() >= deadline) goto done;
-        int n = esp_http_client_read(client, reply + received, REPLY_LIMIT - received);
+        int n = esp_http_client_read(client, reply + received, capacity - received);
         if (n < 0) goto done;
         if (!n) break;
         received += n;
@@ -242,6 +253,27 @@ static void receive_text(void) {
     } else if (cJSON_IsArray(messages)) set_status("已连接服务器，等待消息");
     else set_status("服务器返回格式错误");
     cJSON_Delete(response);
+}
+static void check_update(bool interactive) {
+    if (!pl_ota_available()) { if(interactive)set_status("当前分区不支持 OTA，需要有线迁移"); return; }
+    if (!(xEventGroupGetBits(events) & LINK_UP) || !saved.config.credential[0]) { if(interactive)set_status("请先联网并完成设备绑定"); return; }
+    int status=0;
+    cJSON *reply=relay_request(&saved.config,"/api/v1/device/firmware/latest",NULL,&status);
+    if(!reply){if(interactive)set_status(status==404?"暂无已发布的固件更新":"检查更新失败，请稍后重试");return;}
+    char *manifest=cJSON_PrintUnformatted(reply);cJSON_Delete(reply);
+    if(!manifest){if(interactive)set_status("内存不足，请稍后重试");return;}
+    esp_err_t result=pl_ota_parse(manifest,strlen(manifest),pl_ota_sequence(storage),&ota_offer);free(manifest);
+    if(result==ESP_OK){ota_prompt=true;set_status("等待确认，不会自动安装");render();}
+    else if(interactive)set_status(result==ESP_ERR_INVALID_VERSION?"当前已是最新发布版本":"固件签名或元数据校验失败");
+}
+static void update_progress(int percent){char text[64];snprintf(text,sizeof(text),"正在下载固件 %d%%，请勿断电",percent);set_status(text);}
+static void install_update(void){
+    if(!(xEventGroupGetBits(events)&LINK_UP)){set_status("网络未连接，请恢复后重试");return;}
+    const esp_partition_t *written=NULL;
+    esp_err_t result=pl_ota_download(&saved.config,&ota_offer,update_progress,&written);
+    if(result==ESP_OK)result=pl_ota_activate(storage,&ota_offer,written);
+    if(result==ESP_OK){set_status("固件已校验，正在重启");vTaskDelay(pdMS_TO_TICKS(1500));esp_restart();}
+    ota_prompt=false;render();set_status("升级未完成，继续使用当前版本");
 }
 static void random_hex(char *out, size_t bytes) {
     static const char digits[] = "0123456789abcdef";
@@ -512,13 +544,13 @@ void app_main(void) {
     ESP_ERROR_CHECK(bsp_button_init(button, NULL));
     if (nvs_flash_init() != ESP_OK || nvs_flash_init_partition("pocketcfg") != ESP_OK ||
         nvs_open_from_partition("pocketcfg", "pocketlink", NVS_READWRITE, &storage) != ESP_OK) {
-        set_status("存储初始化失败；未擦除任何分区"); return;
+        set_status("存储初始化失败；未擦除任何分区"); pl_ota_boot_failed(); return;
     }
     size_t size = sizeof(saved);
     esp_err_t loaded = nvs_get_blob(storage, "state", &saved, &size);
     if (loaded != ESP_ERR_NVS_NOT_FOUND && (loaded != ESP_OK || size != sizeof(saved) ||
         !pl_config_valid(&saved.config) || !saved.config.credential[0] || !pl_inbox_valid(&saved.inbox))) {
-        set_status("配置版本或数据无效；未覆盖原数据"); return;
+        set_status("配置版本或数据无效；未覆盖原数据"); pl_ota_boot_failed(); return;
     }
     if (loaded == ESP_ERR_NVS_NOT_FOUND) {
         memset(&saved, 0, sizeof(saved)); saved.config.version = PL_CONFIG_VERSION;
@@ -538,16 +570,22 @@ void app_main(void) {
     esp_sntp_setoperatingmode(SNTP_OPMODE_POLL); esp_sntp_setservername(0, "ntp.aliyun.com");
     esp_sntp_setservername(1, "pool.ntp.org");
     render();
+    esp_err_t ota_status=pl_ota_confirm(storage);
+    if(ota_status!=ESP_OK && ota_status!=ESP_ERR_NOT_SUPPORTED){set_status("升级状态保存失败，请检查存储");pl_ota_boot_failed();return;}
     if (saved.config.ssid[0]) {
         set_status("正在连接已保存网络");
         if (!connect_wifi(&saved.config)) set_status("网络暂不可用，自动重试；长按确定配网");
     } else start_portal();
-    int64_t next_poll = 0, next_reconnect = 0;
+    int64_t next_poll = 0, next_reconnect = 0, next_update_check = esp_timer_get_time()+30000000;
     for (;;) {
         command cmd;
         if (xQueueReceive(commands, &cmd, pdMS_TO_TICKS(100)) == pdTRUE) {
             if (cmd.kind == CMD_KEY) {
-                if (cmd.key == BSP_BTN_OK && cmd.event == BSP_BTN_LONG) start_portal();
+                if (ota_prompt) {
+                    if(cmd.key==BSP_BTN_DOWN && cmd.event==BSP_BTN_LONG)install_update();
+                    else if(cmd.key==BSP_BTN_OK && cmd.event==BSP_BTN_CLICK){ota_prompt=false;render();set_status("已取消升级，可长按上键再次检查");}
+                } else if(!ap_active && cmd.key==BSP_BTN_UP && cmd.event==BSP_BTN_LONG)check_update(true);
+                else if (cmd.key == BSP_BTN_OK && cmd.event == BSP_BTN_LONG) start_portal();
                 else if (cmd.event == BSP_BTN_CLICK && ap_active && cmd.key == BSP_BTN_OK) { url_qr = !url_qr; render(); }
                 else if (cmd.event == BSP_BTN_CLICK && !ap_active && saved.inbox.id && cmd.key == BSP_BTN_OK) {
                     saved_state next = saved; pl_inbox_read(&next.inbox);
@@ -568,9 +606,12 @@ void app_main(void) {
         if (!ap_active && saved.config.ssid[0] && !(xEventGroupGetBits(events) & LINK_UP) && now >= next_reconnect) {
             set_status("网络已断开，正在重连"); connect_wifi(&saved.config); next_reconnect = esp_timer_get_time() + 15000000;
         }
-        if (!ap_active && (xEventGroupGetBits(events) & LINK_UP) && now >= next_poll) {
+        if (!ap_active && !ota_prompt && (xEventGroupGetBits(events) & LINK_UP) && now >= next_poll) {
             if (clock_ready()) receive_text();
             next_poll = esp_timer_get_time() + 5000000;
+        }
+        if(!ap_active && !ota_prompt && !saved.inbox.id && (xEventGroupGetBits(events)&LINK_UP) && now>=next_update_check){
+            check_update(false);next_update_check=esp_timer_get_time()+1800000000LL;
         }
     }
 }

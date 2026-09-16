@@ -133,7 +133,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, 403, "device_endpoint")
 		return
 	}
-	if a.messageHTTP(w, r) {
+	if a.firmwareHTTP(w, r) || a.messageHTTP(w, r) {
 		return
 	}
 	switch {

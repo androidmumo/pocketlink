@@ -78,7 +78,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		features := []string{}
 		stage := "foundation"
 		if a.auth != nil {
-			features = []string{"admin_login", "device_pairing", "device_revocation", "rooms", "text_messages", "receipts", "device_websocket"}
+			features = []string{"admin_login", "device_pairing", "device_revocation", "rooms", "text_messages", "receipts", "device_websocket", "signed_firmware_ota"}
 			stage = "text"
 		}
 		write(w, 200, map[string]any{"protocol_versions": []int{1}, "server_version": a.version, "stage": stage, "enabled_features": features, "limits": map[string]int{"control_bytes": 8192, "text_utf8_bytes": 2048, "text_codepoints": 200, "realtime_plaintext_bytes": 1100}})

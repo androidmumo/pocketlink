@@ -11,3 +11,5 @@
 **/*.pem
 **/*.key
 .local
+
+!services/relay/internal/firmware/trust.pem

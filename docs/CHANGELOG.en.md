@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Add signed OTA packages, A/B device updates with physical confirmation and boot rollback, console release management, SQLite migration 004 and manual GitHub signing. Device acceptance remains pending.
+
 - Add independent PocketLink development firmware with QR hotspot provisioning, HTTPS pairing, a durable single-message inbox and receipts; add configuration/inbox host tests and dual-firmware CI. Physical-device acceptance is pending.
 
 - Add room permissions, idempotent text sending, offline queues, per-device received/read receipts and WSS transport with console history.
