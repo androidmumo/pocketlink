@@ -40,6 +40,8 @@ localStorage. Page assets live on the device: no CDN or phone app is required.
 The firmware does not read or overwrite `cardid`; it uses `PL-<Wi-Fi MAC>` as a public
 SN. The SN is not an authentication credential.
 
+The portal supports `http://192.168.4.1` and explicit default port `http://192.168.4.1:80`. If older firmware rejects access despite a hotspot connection, install firmware containing the dual-stack address validation fix. Do not disable phone IPv6 or remove access validation.
+
 ## Later boots and reconfiguration
 
 - Configured devices reconnect automatically. Temporary network failures do not open a hotspot.

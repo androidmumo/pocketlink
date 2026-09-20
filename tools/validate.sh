@@ -16,7 +16,7 @@ static() {
     "${scratch}/test-ui"
     python3 tests/firmware/test_verify_firmware.py
     python3 tests/firmware/test_font_coverage.py
-    for suite in config inbox dns; do
+    for suite in config inbox dns portal_request; do
         cc -std=c11 -Wall -Wextra -Werror -Ifirmware/components/pocketlink_config \
             "tests/provisioning/test_${suite}.c" firmware/components/pocketlink_config/*.c \
             -o "${scratch}/test-${suite}"

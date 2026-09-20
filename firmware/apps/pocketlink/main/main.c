@@ -38,6 +38,7 @@
 #include "pocketlink_config.h"
 #include "pocketlink_inbox.h"
 #include "pocketlink_dns.h"
+#include "pocketlink_portal.h"
 #include "pocketlink_ota.h"
 #include "esp_system.h"
 
@@ -297,13 +298,13 @@ static esp_err_t error_reply(httpd_req_t *req, const char *status, const char *m
     return json_reply(req, status, value);
 }
 static bool local_request(httpd_req_t *req, bool host_check) {
-    struct sockaddr_in address = {0}; socklen_t length = sizeof(address);
+    struct sockaddr_storage address = {0}; socklen_t length = sizeof(address);
     if (!portal_active() || getsockname(httpd_req_to_sockfd(req), (struct sockaddr *)&address, &length) ||
-        address.sin_addr.s_addr != inet_addr(AP_IP)) return false;
+        !pl_portal_local_address((const struct sockaddr *)&address, length)) return false;
     if (!host_check) return true;
     char host[64];
     return httpd_req_get_hdr_value_str(req, "Host", host, sizeof(host)) == ESP_OK &&
-        (!strcmp(host, AP_IP));
+        pl_portal_host(host);
 }
 static esp_err_t portal_get(httpd_req_t *req) {
     if (!local_request(req, true)) return error_reply(req, "403 Forbidden", "请连接设备热点并打开 192.168.4.1");
@@ -338,7 +339,7 @@ static bool copy_field(cJSON *root, const char *key, char *out, size_t size) {
 static esp_err_t portal_post(httpd_req_t *req) {
     char supplied[33], origin[64], type[32];
     if (!local_request(req, true) ||
-        httpd_req_get_hdr_value_str(req, "Origin", origin, sizeof(origin)) != ESP_OK || strcmp(origin, AP_ORIGIN) ||
+        httpd_req_get_hdr_value_str(req, "Origin", origin, sizeof(origin)) != ESP_OK || !pl_portal_origin(origin) ||
         httpd_req_get_hdr_value_str(req, "Content-Type", type, sizeof(type)) != ESP_OK || strcmp(type, "application/json") ||
         httpd_req_get_hdr_value_str(req, "X-PocketLink-Token", supplied, sizeof(supplied)) != ESP_OK) {
         return error_reply(req, "403 Forbidden", "会话无效，请重新打开设备页面");
