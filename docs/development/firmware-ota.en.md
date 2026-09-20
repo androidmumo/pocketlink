@@ -55,7 +55,7 @@ retry uploads with the original signed package rather than signing identical byt
 
 For GitHub packaging, open Settings → Secrets and variables → Actions → New repository secret.
 Name it `POCKETLINK_FIRMWARE_SIGNING_KEY` and paste the complete private key into that Secret field,
-never into chat or an Issue. Configuration of this Secret has not yet been confirmed.
+never into chat or an Issue. This repository configured the Secret on 2026-09-17; the signing workflow still needs a verification run.
 Open Actions → Signed firmware package → Run workflow, select main and enter version and sequence.
 Download `signed-pocketlink-<run_id>` after build, checks and signing succeed. The workflow does not
 publish to devices or deploy the server automatically.

@@ -4,6 +4,7 @@ root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${root}"
 source tools/env.sh
 static() {
+    command -v shellcheck >/dev/null 2>&1 || { echo "ERROR: shellcheck missing; see docs/development/setup.md" >&2; return 1; }
     python3 tools/check-repo.py
     node --check apps/console/assets/app.js
     test -z "$(gofmt -l apps/console/*.go)"

@@ -9,6 +9,7 @@
   `$HOME/.local/share/pocketlink/go1.26.8/bin` without modifying shell startup files.
 - actionlint 1.7.12: `go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12`.
   Add `$(go env GOPATH)/bin` to PATH.
+- ShellCheck 0.10.0 or newer must be on PATH; actionlint uses it to check workflow shell scripts.
 - Python 3.10+, a C compiler, Git, and Bash.
 - ESP-IDF 5.5.3 with ESP32-C3 tools for firmware. Activate its `export.sh`.
 - Docker Engine/Desktop plus Compose for local container testing. If unavailable,

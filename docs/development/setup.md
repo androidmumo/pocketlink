@@ -9,6 +9,7 @@
   下的用户级安装，不修改 shell 启动文件。
 - actionlint 1.7.12：`go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12`。
   将 `$(go env GOPATH)/bin` 加入 PATH。
+- ShellCheck 0.10.0 或更新版本，须在 PATH 中；actionlint 使用它检查工作流里的 Shell。
 - Python 3.10+、C 编译器、Git、Bash。
 - 固件使用 ESP-IDF 5.5.3 与 ESP32-C3 工具，先激活其 `export.sh`。
 - 本地容器测试需要 Docker Engine/Desktop 和 Compose。不可用时由 GitHub Actions

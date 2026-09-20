@@ -52,7 +52,7 @@ go run ./cmd/fwtool \
 
 GitHub 打包：仓库 Settings → Secrets and variables → Actions → New repository secret，
 名称为 `POCKETLINK_FIRMWARE_SIGNING_KEY`，值为上述私钥文件完整内容。只在 GitHub 的
-Secret 输入框粘贴，不发到聊天或 Issue。当前尚未确认该 Secret 已配置。
+Secret 输入框粘贴，不发到聊天或 Issue。本仓库已于 2026-09-17 配置该 Secret；签名流水线仍需运行验证。
 然后 Actions → Signed firmware package → Run workflow，选择 main 并填写版本和递增序号。
 流水线构建、检查后签名，下载 `signed-pocketlink-<run_id>` 附件。它不会自动发布至设备或部署服务器。
 
