@@ -44,11 +44,11 @@ P2 在根据转发头做安全判断前，必须定义可信代理。
 私有 GHCR 包拉取可能需要登录。注册表和服务器凭证不得进入 Git 或日志。
 GITHUB_TOKEN 发布权限与生产拉取权限不同。CI 不更新生产。
 
-## 当前体验环境（2026-09-11 升级，2026-09-14 复核）
+## 当前体验环境（2026-09-20 升级并复核）
 
 - 地址：`https://pocketlink.mcloc.cn`，1Panel 代理到 `127.0.0.1:3002`。
-- 应用版本：`b7c5618c77b003e0323bfee8ec6a1774c126ab96`。
-- 镜像：`ghcr.io/androidmumo/pocketlink-relay@sha256:b2c473220481cafd4b028d2b4257ccaebd54c3c0cb31377e8feaa7cc7e09696c`。
+- 应用版本：`ea334044b2326097123437c435132f92cac4d067`。
+- 镜像：`ghcr.io/androidmumo/pocketlink-relay@sha256:51be4f9cdadf599739cdcb4c10f8f55f8bcc2e0258830e5e28ea77b7635d5012`。
 - 生效配置：`/opt/pocketlink/compose.yaml`、`compose.auth.yaml` 和 `.env`。
 - 所有持久化文件位于 `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`：
   `data/` 为 SQLite，`secrets/admin_password` 为管理密码，`backups/` 为一致性备份。
@@ -69,3 +69,5 @@ GITHUB_TOKEN 发布权限与生产拉取权限不同。CI 不更新生产。
 现有 bing、chat、OpenResty 的启动时间与升级前一致。
 WebSocket 收信、重连补发和回执已通过主机与 CI 测试；真实代理后的设备联调、
 完整浏览器交互和真机收信尚未验证。
+
+2026-09-20 已部署签名 OTA 管理。升级前备份 `backups/before-ota-20260920T021947Z.tar.gz` 包含数据及部署配置，已解压验证数据库完整性。迁移 004、HTTPS 登录/固件列表/退出、健康检查通过；固件发布通道为空。其他容器启动时间和重启次数未变。回退至旧文字版本需要同时恢复旧数据库，不能仅更换旧镜像。

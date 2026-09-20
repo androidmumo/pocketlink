@@ -22,8 +22,7 @@ application and blank otadata. Subsequent application updates can use Wi-Fi.
 
 Original nvs and phy_init remain. Before migration, privately back up cardid and pocketcfg and inspect
 actual partitions. Build and verify the merged image, then use that build's segmented flash_args.
-**Never erase the entire Flash or include identity backups in source or release packages.** No device
-was flashed during this development. Returning to diagnostic firmware also requires wired migration.
+**Never erase the entire Flash or include identity backups in source or release packages.** Initial wired installation, boot and identity preservation passed on one device on 2026-09-20; OTA update/rollback still needs physical-device acceptance. Returning to diagnostic firmware also requires wired migration.
 
 ## Building and signing
 

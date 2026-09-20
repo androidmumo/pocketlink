@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Fix missing Chinese glyphs on the provisioning screen with complete UI text and common GB2312 Han coverage, checked by host tests.
+
 - Add signed OTA packages, A/B device updates with physical confirmation and boot rollback, console release management, SQLite migration 004 and manual GitHub signing. Device acceptance remains pending.
 
 - Add independent PocketLink development firmware with QR hotspot provisioning, HTTPS pairing, a durable single-message inbox and receipts; add configuration/inbox host tests and dual-firmware CI. Physical-device acceptance is pending.

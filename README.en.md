@@ -16,7 +16,7 @@ Use `pocketlink` firmware for device features; `board-check` remains hardware di
 ## Existing deployment
 
 Open **[PocketLink](https://pocketlink.mcloc.cn)**. The following records the deployment on
-2026-09-11, rechecked on 2026-09-14; server configuration files are authoritative after later changes.
+2026-09-20, verified the same day; server configuration files are authoritative after later changes.
 
 | Item | Configuration |
 | --- | --- |
@@ -27,12 +27,15 @@ Open **[PocketLink](https://pocketlink.mcloc.cn)**. The following records the de
 | Database | `data/relay.db` under that root, plus runtime SQLite WAL files |
 | Administrator password | `secrets/admin_password` under that root |
 | Backups | `backups/` under that root; no scheduled backup currently exists |
-| Application commit | `b7c5618c77b003e0323bfee8ec6a1774c126ab96` |
+| Application commit | `ea334044b2326097123437c435132f92cac4d067` |
 | Resource limits | 192 MB memory, 0.5 CPU, 128 processes; non-root, read-only root filesystem |
 
 The image includes the web console; no separate frontend or MySQL deployment is needed.
 SQLite persists in a dedicated directory. HTTPS login/logout, restart session invalidation,
 backup recovery and database integrity were verified. Physical device pairing is unverified.
+
+
+Signed OTA management was deployed on 2026-09-20: upload, publish, withdraw and delete firmware packages. No device update is published; initial wired installation and device acceptance are still required. The pre-upgrade backup is `backups/before-ota-20260920T021947Z.tar.gz`.
 
 ## Using the console
 
@@ -83,7 +86,7 @@ test ! -e /opt/pocketlink
 test ! -e /opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
 git clone https://github.com/androidmumo/pocketlink.git /opt/pocketlink-src
 cd /opt/pocketlink-src
-git checkout b7c5618c77b003e0323bfee8ec6a1774c126ab96
+git checkout ea334044b2326097123437c435132f92cac4d067
 install -d -m 700 /opt/pocketlink
 cp deploy/compose.yaml deploy/compose.auth.yaml /opt/pocketlink/
 base=/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
@@ -105,7 +108,7 @@ The pinned digest comes from the [successful CI run](https://github.com/androidm
 Do not treat the floating `edge` tag as a fixed release.
 
 ```dotenv
-POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:b2c473220481cafd4b028d2b4257ccaebd54c3c0cb31377e8feaa7cc7e09696c
+POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:51be4f9cdadf599739cdcb4c10f8f55f8bcc2e0258830e5e28ea77b7635d5012
 POCKETLINK_HTTP_PORT=3002
 POCKETLINK_LOG_LEVEL=info
 POCKETLINK_PUBLIC_ORIGIN=https://pocketlink.mcloc.cn

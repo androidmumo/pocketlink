@@ -55,11 +55,11 @@ GHCR can require a registry login for private packages. Do not put registry or
 server credentials in the repository or logs. Publishing via GITHUB_TOKEN and
 production pulling are distinct permissions. CI performs no production updates.
 
-## Current trial environment (upgraded 2026-09-11, rechecked 2026-09-14)
+## Current trial environment (upgraded and verified 2026-09-20)
 
 - URL: `https://pocketlink.mcloc.cn`, proxied by 1Panel to `127.0.0.1:3002`.
-- Application commit: `b7c5618c77b003e0323bfee8ec6a1774c126ab96`.
-- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:b2c473220481cafd4b028d2b4257ccaebd54c3c0cb31377e8feaa7cc7e09696c`.
+- Application commit: `ea334044b2326097123437c435132f92cac4d067`.
+- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:51be4f9cdadf599739cdcb4c10f8f55f8bcc2e0258830e5e28ea77b7635d5012`.
 - Active configuration: `/opt/pocketlink/compose.yaml`, `compose.auth.yaml` and `.env`.
 - Persistent files live under `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`:
   `data/` holds SQLite, `secrets/admin_password` the administrator secret and `backups/` consistent backups.
@@ -84,3 +84,5 @@ login, room/device list reads and logout. Existing bing, chat and OpenResty star
 times match the pre-upgrade baseline. WebSocket delivery, reconnect replay and receipts
 passed host and CI tests; real devices behind the production proxy, full browser
 interaction and physical device reception remain unverified.
+
+Signed OTA management was deployed on 2026-09-20. The pre-upgrade backup `backups/before-ota-20260920T021947Z.tar.gz` contains data and deployment configuration; its extracted database passed integrity checks. Migration 004, HTTPS login/firmware listing/logout and health checks passed; the firmware channel is empty. Other containers retained their start times and restart counts. Returning to the old text release requires restoring its matching database, not just switching images.

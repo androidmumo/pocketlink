@@ -1,3 +1,4 @@
+#include "pocketlink_font.h"
 /* PocketLink: one worker owns networking/NVS; callbacks only enqueue work.
  * The local portal is restricted to the AP interface, exact Host/Origin and a
  * random session token. No Wi-Fi password or device credential is logged. */
@@ -529,7 +530,7 @@ void app_main(void) {
     bsp_display_backlight(70);
     assert(bsp_lvgl_lock(-1));
     lv_obj_t *screen = lv_screen_active();
-    lv_obj_set_style_text_font(screen, &lv_font_source_han_sans_sc_14_cjk, 0);
+    lv_obj_set_style_text_font(screen, &pocketlink_font_14, 0);
     lv_obj_set_style_bg_color(screen, lv_color_hex(0xf1f6f3), 0);
     title = lv_label_create(screen); lv_obj_set_pos(title, 10, 8); lv_obj_set_width(title, 220);
     qr = lv_qrcode_create(screen); lv_qrcode_set_size(qr, 180); lv_qrcode_set_quiet_zone(qr, true);
@@ -539,7 +540,7 @@ void app_main(void) {
     message_label = lv_label_create(message_box); lv_obj_set_width(message_label, 198);
     status_label = lv_label_create(screen); lv_obj_set_pos(status_label, 10, 225); lv_obj_set_width(status_label, 220);
     hint = lv_label_create(screen); lv_obj_set_pos(hint, 10, 267); lv_obj_set_width(hint, 220);
-    lv_obj_set_style_text_font(hint, &lv_font_source_han_sans_sc_14_cjk, 0);
+    lv_obj_set_style_text_font(hint, &pocketlink_font_14, 0);
     bsp_lvgl_unlock();
     ESP_ERROR_CHECK(bsp_button_init(button, NULL));
     if (nvs_flash_init() != ESP_OK || nvs_flash_init_partition("pocketcfg") != ESP_OK ||

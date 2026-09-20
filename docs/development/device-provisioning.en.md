@@ -79,13 +79,18 @@ message. Already downloaded content cannot be instantly erased while offline or 
 remaining on an already received message. Revoked credentials require re-pairing and
 cannot receive new messages. Console credential validity is still not live online status.
 
+
+The font covers ASCII, 6,763 common GB2312 Han characters and all device UI text. Rare characters, some Traditional Chinese characters and emoji may remain unsupported. Host checks reject UI text with missing glyphs.
+
 ## Storage and security boundaries
 
 | Region | Address / size | Purpose |
 | --- | --- | --- |
-| factory | `0x10000` / `0x300000` | Application, preserving the 3 MB limit |
+| ota_0 | `0x10000` / `0x300000` | First application slot, preserving the 3 MB limit |
+| otadata | `0x310000` / `0x2000` | OTA boot selection |
 | cardid | `0x356000` / `0x4000` | Existing identity partition; never overwrite |
-| pocketcfg | `0x35a000` / `0x10000` | Dedicated NVS configuration and current message |
+| pocketcfg | `0x35a000` / `0x10000` | Dedicated NVS configuration, current message and update state |
+| ota_1 | `0x370000` / `0x300000` | Second application slot |
 
 Configuration and inbox are one versioned blob: a binding and its message are not saved
 as two independent updates. The Wi-Fi driver uses RAM storage rather than its default
@@ -119,13 +124,12 @@ idf.py -p /dev/cu.YOUR_DEVICE flash monitor
 ```
 
 Before flashing, verify the port, ESP32-C3/8 MB target, partition table and current backup.
-The segmented command above writes only the bootloader, partition table and application,
+Initial OTA migration writes the bootloader, partition table, application and blank otadata,
 not `cardid` or `pocketcfg`. **Never use `erase-flash` or write files to protected partitions.**
 A merged image is suitable for a provisioned device only when its entire written range
 ends before `0x356000`. The build verifier permits padding in the protected region, but
 writing that padding would still erase existing identity data; this does not authorize
-flashing a larger image across the protected partition. This development task does not
-flash hardware. After flashing, verify reset into the application before device tests.
+flashing a larger image across the protected partition. Initial wired installation, hard-reset boot and identity readback comparison passed on one device on 2026-09-20. Phone provisioning, reception and OTA still require acceptance. After flashing, verify reset into the application before device tests.
 
 ## Device acceptance checklist
 
