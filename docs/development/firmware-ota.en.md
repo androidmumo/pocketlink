@@ -10,7 +10,7 @@ The server needs migration 004; provisioning and text reception still work with 
 
 Published `0.4.3`, sequence `3`, size `2,211,920` bytes, SHA256 `3361ca51a0d645d99008e860e653ae1a010b6604f8894cad7ceddb4939c1afbe`, from source commit `a8afe48`. Background polling, battery reads, reconnects and update checks no longer trigger loading or claim the interaction lock. Manual slow actions show a single-line wait message with a trailing spinner. Immediate page turns do not show loading; queued keys cannot act on a changed message/view.
 
-The full local host gate, both firmware builds and protected-layout checks passed; the server verified and published the package. Physical idle behavior and the one-line indicator await user confirmation. The consistent backup `backups/before-ota-0.4.3-20260921T122133Z.db` passed integrity checks. No service restart or change to other applications was needed.
+The full local host gate, both firmware builds and protected-layout checks passed; the server verified and published the package. The user confirmed successful 0.4.3 installation, no idle loading indicator, and correct single-line manual feedback with a trailing spinner. The consistent backup `backups/before-ota-0.4.3-20260921T122133Z.db` passed integrity checks. No service restart or change to other applications was needed.
 
 
 ## Previous OTA release 0.4.2 (2026-09-21)
