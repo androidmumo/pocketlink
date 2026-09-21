@@ -16,7 +16,7 @@ Use `pocketlink` firmware for device features; `board-check` remains hardware di
 ## Existing deployment
 
 Open **[PocketLink](https://pocketlink.mcloc.cn)**. The following records the deployment on
-2026-09-20, verified the same day; server configuration files are authoritative after later changes.
+2026-09-21, verified the same day; server configuration files are authoritative after later changes.
 
 | Item | Configuration |
 | --- | --- |
@@ -27,7 +27,7 @@ Open **[PocketLink](https://pocketlink.mcloc.cn)**. The following records the de
 | Database | `data/relay.db` under that root, plus runtime SQLite WAL files |
 | Administrator password | `secrets/admin_password` under that root |
 | Backups | `backups/` under that root; no scheduled backup currently exists |
-| Application commit | `ea334044b2326097123437c435132f92cac4d067` |
+| Application commit | `fa4c555a326ace86d54c893557fa39a8cf4c2848` |
 | Resource limits | 192 MB memory, 0.5 CPU, 128 processes; non-root, read-only root filesystem |
 
 The image includes the web console; no separate frontend or MySQL deployment is needed.
@@ -36,6 +36,8 @@ backup recovery and database integrity were verified. Physical device pairing is
 
 
 Signed OTA management was deployed on 2026-09-20: upload, publish, withdraw and delete firmware packages. No device update is published; initial wired installation and device acceptance are still required. The pre-upgrade backup is `backups/before-ota-20260920T021947Z.tar.gz`.
+
+Invite registration, isolated accounts, shared rooms and the redesigned console were deployed on 2026-09-21. Existing data belongs to the administrator; the password file and device credentials are preserved. The pre-upgrade backup is `backups/before-accounts-20260921T060225Z.tar.gz`; reverting to an old image also requires restoring its matching database.
 
 ## Using the console
 
@@ -49,7 +51,7 @@ Signed OTA management was deployed on 2026-09-20: upload, publish, withdraw and 
    Developers can also use the [authentication API](docs/development/authentication.en.md).
 5. Refresh after successful pairing. An active entry means its credential is valid, **not that the device is online**.
 6. Revoke the credential when a device is lost or needs rotation. Old tokens stop working immediately;
-   revoke an active SN before pairing it again.
+   revoke an active SN before pairing it again with its original owner account. Cross-account transfers are not supported.
 7. Log out when finished. If a pairing response is lost, the device secret cannot be recovered; revoke and pair again.
 
 SN is an identifier, not a password. Pairing codes and device credentials are random secrets;
@@ -86,7 +88,7 @@ test ! -e /opt/pocketlink
 test ! -e /opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
 git clone https://github.com/androidmumo/pocketlink.git /opt/pocketlink-src
 cd /opt/pocketlink-src
-git checkout ea334044b2326097123437c435132f92cac4d067
+git checkout fa4c555a326ace86d54c893557fa39a8cf4c2848
 install -d -m 700 /opt/pocketlink
 cp deploy/compose.yaml deploy/compose.auth.yaml /opt/pocketlink/
 base=/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
@@ -104,11 +106,11 @@ PASSWORD
 ```
 
 Write the following to `/opt/pocketlink/.env` and set its permissions to `600`.
-The pinned digest comes from the [successful CI run](https://github.com/androidmumo/pocketlink/actions/runs/34574560808).
+The pinned digest comes from the [successful CI run](https://github.com/androidmumo/pocketlink/actions/runs/35566238838).
 Do not treat the floating `edge` tag as a fixed release.
 
 ```dotenv
-POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:51be4f9cdadf599739cdcb4c10f8f55f8bcc2e0258830e5e28ea77b7635d5012
+POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:c8c2a29b3cf9fe0c3efc0b917fb56e4b0d34c4f7dbe4ac872393062fa3dbdee6
 POCKETLINK_HTTP_PORT=3002
 POCKETLINK_LOG_LEVEL=info
 POCKETLINK_PUBLIC_ORIGIN=https://pocketlink.mcloc.cn

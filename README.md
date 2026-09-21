@@ -13,7 +13,7 @@
 
 ## 当前已部署的环境
 
-访问 **[PocketLink 管理页](https://pocketlink.mcloc.cn)**。以下是 2026-09-20 升级并复核的部署记录，后续实际配置以服务器文件为准。
+访问 **[PocketLink 管理页](https://pocketlink.mcloc.cn)**。以下是 2026-09-21 升级并复核的部署记录，后续实际配置以服务器文件为准。
 
 | 项目 | 配置 |
 | --- | --- |
@@ -24,7 +24,7 @@
 | 数据库 | 上述目录的 `data/relay.db`，以及运行时的 SQLite WAL 文件 |
 | 管理员密码 | 上述目录的 `secrets/admin_password` |
 | 备份 | 上述目录的 `backups/`；目前没有自动备份任务 |
-| 应用版本 | `ea334044b2326097123437c435132f92cac4d067` |
+| 应用版本 | `fa4c555a326ace86d54c893557fa39a8cf4c2848` |
 | 资源限制 | 192 MB 内存、0.5 CPU、128 个进程；非 root、只读根文件系统 |
 
 网页已包含在服务端镜像中，无需另外部署前端或安装 MySQL。SQLite 使用专属目录持久化。
@@ -32,6 +32,8 @@
 
 
 签名 OTA 管理已于 2026-09-20 部署：可上传、发布、撤回和删除固件包。当前没有发布设备升级；先完成首次有线安装和真机验收。升级前备份为 `backups/before-ota-20260920T021947Z.tar.gz`。
+
+邀请码注册、独立用户空间、共享房间和新版工作台已于 2026-09-21 部署。原有数据归管理员，原密码文件及设备凭证保留。升级前备份为 `backups/before-accounts-20260921T060225Z.tar.gz`；回退旧镜像必须同时恢复匹配的旧数据库。
 
 ## 使用管理页
 
@@ -43,7 +45,7 @@
    详见[设备配网](docs/development/device-provisioning.md)。**仅生成配对码不会自动添加设备**；
    设备成功联网并提交配对码后才会出现。开发者也可按[鉴权接口](docs/development/authentication.md)联调。
 5. 设备配对成功后点击“刷新”。列表中的“有效”表示凭证有效，**不是在线状态**。
-6. 丢失设备或需要更换凭证时点击“撤销凭证”。旧密钥立即失效；同一 SN 需要先撤销再重新配对。
+6. 丢失设备或需要更换凭证时点击“撤销凭证”。旧密钥立即失效；同一 SN 需要先撤销，再通过原归属账号重新配对；不支持跨账号转移。
 7. 使用完点击“退出登录”。若配对响应丢失，无法找回设备密钥，应撤销该设备并生成新配对码。
 
 SN 只是设备标识，不是密码。配对码和设备密钥都是随机凭证，数据库只保存摘要。
@@ -54,7 +56,7 @@ SN 只是设备标识，不是密码。配对码和设备密钥都是随机凭�
 
 创建房间后，从成员列表勾选已配对设备，填写最多 200 字符的正文发送。消息先在服务端落盘，
 设备连接后接收；历史记录中的“查看 / 刷新回执”显示待接收、已接收、已读或撤回状态。
-新成员不接收旧消息，移出成员或归档房间后停止投递；设备尚需后续固件才能真机收信。
+新成员不接收旧消息，移出成员或归档房间后停止投递；真机收信使用开发固件，仍待设备验收。
 网络异常后同一正文可重试，页面重载后重发前先核对历史。详见[文字接口和 WSS 协议](docs/development/messaging.md)。
 
 ## 首次部署到新服务器
@@ -78,7 +80,7 @@ test ! -e /opt/pocketlink
 test ! -e /opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
 git clone https://github.com/androidmumo/pocketlink.git /opt/pocketlink-src
 cd /opt/pocketlink-src
-git checkout ea334044b2326097123437c435132f92cac4d067
+git checkout fa4c555a326ace86d54c893557fa39a8cf4c2848
 install -d -m 700 /opt/pocketlink
 cp deploy/compose.yaml deploy/compose.auth.yaml /opt/pocketlink/
 base=/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
@@ -96,10 +98,10 @@ PASSWORD
 ```
 
 在 `/opt/pocketlink/.env` 写入以下内容，设置权限为 `600`。固定镜像摘要来自
-[已通过的 CI 构建](https://github.com/androidmumo/pocketlink/actions/runs/34574560808)，不要把浮动 `edge` 当作固定版本。
+[已通过的 CI 构建](https://github.com/androidmumo/pocketlink/actions/runs/35566238838)，不要把浮动 `edge` 当作固定版本。
 
 ```dotenv
-POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:51be4f9cdadf599739cdcb4c10f8f55f8bcc2e0258830e5e28ea77b7635d5012
+POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:c8c2a29b3cf9fe0c3efc0b917fb56e4b0d34c4f7dbe4ac872393062fa3dbdee6
 POCKETLINK_HTTP_PORT=3002
 POCKETLINK_LOG_LEVEL=info
 POCKETLINK_PUBLIC_ORIGIN=https://pocketlink.mcloc.cn

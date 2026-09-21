@@ -2,10 +2,10 @@
 
 # Deployment boundaries
 
-The user authorized a P2 text trial with login, device management, room permissions,
-text sending, offline delivery and receipts. Device reception firmware and voice
-intercom remain later milestones. The user manages the
-domain and HTTPS reverse proxy in 1Panel.
+The user authorized deployment of invite registration and shared rooms, with isolated accounts,
+device management, room permissions, text sending, offline delivery and receipts.
+Device reception firmware awaits physical acceptance; voice intercom is not implemented.
+The user manages the domain and HTTPS reverse proxy in 1Panel.
 
 ## Isolated deployment configuration
 
@@ -55,11 +55,11 @@ GHCR can require a registry login for private packages. Do not put registry or
 server credentials in the repository or logs. Publishing via GITHUB_TOKEN and
 production pulling are distinct permissions. CI performs no production updates.
 
-## Current trial environment (upgraded and verified 2026-09-20)
+## Current trial environment (upgraded and verified 2026-09-21)
 
 - URL: `https://pocketlink.mcloc.cn`, proxied by 1Panel to `127.0.0.1:3002`.
-- Application commit: `ea334044b2326097123437c435132f92cac4d067`.
-- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:51be4f9cdadf599739cdcb4c10f8f55f8bcc2e0258830e5e28ea77b7635d5012`.
+- Application commit: `fa4c555a326ace86d54c893557fa39a8cf4c2848`.
+- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:c8c2a29b3cf9fe0c3efc0b917fb56e4b0d34c4f7dbe4ac872393062fa3dbdee6`.
 - Active configuration: `/opt/pocketlink/compose.yaml`, `compose.auth.yaml` and `.env`.
 - Persistent files live under `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`:
   `data/` holds SQLite, `secrets/admin_password` the administrator secret and `backups/` consistent backups.
@@ -82,7 +82,8 @@ Checks on 2026-09-14 passed: new container health, loopback port 3002 and data m
 live database integrity, pre-upgrade backup database restore, HTTPS text capabilities,
 login, room/device list reads and logout. Existing bing, chat and OpenResty start
 times match the pre-upgrade baseline. WebSocket delivery, reconnect replay and receipts
-passed host and CI tests; real devices behind the production proxy, full browser
-interaction and physical device reception remain unverified.
+passed host and CI tests; real devices behind the production proxy and physical device reception remain unverified.
 
 Signed OTA management was deployed on 2026-09-20. The pre-upgrade backup `backups/before-ota-20260920T021947Z.tar.gz` contains data and deployment configuration; its extracted database passed integrity checks. Migration 004, HTTPS login/firmware listing/logout and health checks passed; the firmware channel is empty. Other containers retained their start times and restart counts. Returning to the old text release requires restoring its matching database, not just switching images.
+
+On 2026-09-21, invite registration, account isolation, shared rooms and the redesigned console were deployed. The pre-upgrade backup `backups/before-accounts-20260921T060225Z.tar.gz` contains data and deployment configuration; its extracted SQLite database passed integrity checks. Migration 005, legacy ownership, existing row counts, HTTPS administrator login/identity/device/room/firmware/invitation reads and logout passed. Other containers retained their start times and restart counts. Isolated local browser tests covered registration, two-account room joining/leaving, text and receipts, and desktop/mobile layouts; no production test accounts were created. Rollback requires the pre-upgrade database and may discard later writes; never restore it silently.
