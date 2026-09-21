@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Fix unnecessary login-page scrolling and sidebar rubber-banding with a viewport-bound layout and independent content scrolling; keep forms accessible on small screens.
+
 - Add administrator-issued registration invites, isolated device ownership and room invitation/leave/removal. Migrate existing data to the administrator and redesign the responsive console with role-specific navigation, senders and invite management.
 
 - Fix provisioning access rejection on dual-stack HTTP sockets by recognizing IPv4-mapped addresses and explicit default port 80, while retaining hotspot-interface, Host, Origin and token checks.

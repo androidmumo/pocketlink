@@ -2,3 +2,22 @@
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
 @media(max-width:700px){.notice{top:auto;bottom:18px}.sidebar-bottom strong{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}}
+
+/* Keep the document stationary; only content panels own vertical scrolling. */
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+.auth-layout,.app-shell{height:100vh;height:100dvh;min-height:0;overflow:hidden;grid-template-rows:minmax(0,1fr)}
+.auth-card{min-height:0;max-height:100%;overflow-y:auto;overscroll-behavior:none}
+.sidebar{position:relative;height:100%;min-height:0;overflow-y:auto;overscroll-behavior:none}
+.workspace-main{height:100%;min-height:0;overflow-y:auto;overscroll-behavior:none}
+@media(min-width:701px) and (max-height:820px){.signal-art{display:none}.story-content{padding-top:24px}.auth-card{padding-top:24px;padding-bottom:24px}}
+@media(max-width:700px){
+  .auth-layout{grid-template-rows:auto minmax(0,1fr)}
+  .auth-story .story-content{display:none}
+  .auth-card{padding:24px;align-self:center}
+  .auth-card .eyebrow{margin-bottom:12px}
+  .auth-card .segmented{margin:20px 0 16px}
+  .auth-card label{margin-top:14px}
+  .app-shell{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .sidebar{height:auto;overflow:visible}
+  .sidebar nav{overscroll-behavior:none}
+}
