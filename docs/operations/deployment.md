@@ -47,8 +47,8 @@ GITHUB_TOKEN 发布权限与生产拉取权限不同。CI 不更新生产。
 ## 当前体验环境（2026-09-21 升级并复核）
 
 - 地址：`https://pocketlink.mcloc.cn`，1Panel 代理到 `127.0.0.1:3002`。
-- 应用版本：`fa4c555a326ace86d54c893557fa39a8cf4c2848`。
-- 镜像：`ghcr.io/androidmumo/pocketlink-relay@sha256:c8c2a29b3cf9fe0c3efc0b917fb56e4b0d34c4f7dbe4ac872393062fa3dbdee6`。
+- 应用版本：`65438490ebf33c2e2e14a7f0ac34340bbb15069c`。
+- 镜像：`ghcr.io/androidmumo/pocketlink-relay@sha256:6d4b49389dc2e2334d31518e7dbad19df223c85d399b7231afcdc3555987a480`。
 - 生效配置：`/opt/pocketlink/compose.yaml`、`compose.auth.yaml` 和 `.env`。
 - 所有持久化文件位于 `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`：
   `data/` 为 SQLite，`secrets/admin_password` 为管理密码，`backups/` 为一致性备份。
@@ -73,3 +73,5 @@ WebSocket 收信、重连补发和回执已通过主机与 CI 测试；真实代
 2026-09-20 已部署签名 OTA 管理。升级前备份 `backups/before-ota-20260920T021947Z.tar.gz` 包含数据及部署配置，已解压验证数据库完整性。迁移 004、HTTPS 登录/固件列表/退出、健康检查通过；固件发布通道为空。其他容器启动时间和重启次数未变。回退至旧文字版本需要同时恢复旧数据库，不能仅更换旧镜像。
 
 2026-09-21 已部署邀请码注册、账号隔离、共享房间和新版工作台。升级前备份 `backups/before-accounts-20260921T060225Z.tar.gz` 包含数据及部署配置，解压后的 SQLite 完整性检查通过。迁移 005、旧数据归属、原数据数量、HTTPS 管理员登录/账号身份/设备/房间/固件/邀请码列表及退出检查通过；其他容器启动时间和重启次数未变。本地隔离浏览器测试已覆盖注册、两个账号加入/退出房间、发信和回执、桌面与手机布局；未在生产创建测试账号。回退需要恢复升级前数据库，可能丢失备份后的写入，不得静默回退。
+
+2026-09-21 后续部署网页滚动修复：固定文档和导航，内容区域独立滚动；五种桌面/手机/横屏尺寸的浏览器检查通过。升级前备份为 `backups/before-scroll-20260921T064947Z.tar.gz`，未改变数据库结构。线上样式与已验证文件一致，HTTPS 登录/接口/退出及容器健康检查通过，其他容器未重启。

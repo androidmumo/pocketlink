@@ -24,7 +24,7 @@
 | 数据库 | 上述目录的 `data/relay.db`，以及运行时的 SQLite WAL 文件 |
 | 管理员密码 | 上述目录的 `secrets/admin_password` |
 | 备份 | 上述目录的 `backups/`；目前没有自动备份任务 |
-| 应用版本 | `fa4c555a326ace86d54c893557fa39a8cf4c2848` |
+| 应用版本 | `65438490ebf33c2e2e14a7f0ac34340bbb15069c` |
 | 资源限制 | 192 MB 内存、0.5 CPU、128 个进程；非 root、只读根文件系统 |
 
 网页已包含在服务端镜像中，无需另外部署前端或安装 MySQL。SQLite 使用专属目录持久化。
@@ -80,7 +80,7 @@ test ! -e /opt/pocketlink
 test ! -e /opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
 git clone https://github.com/androidmumo/pocketlink.git /opt/pocketlink-src
 cd /opt/pocketlink-src
-git checkout fa4c555a326ace86d54c893557fa39a8cf4c2848
+git checkout 65438490ebf33c2e2e14a7f0ac34340bbb15069c
 install -d -m 700 /opt/pocketlink
 cp deploy/compose.yaml deploy/compose.auth.yaml /opt/pocketlink/
 base=/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
@@ -98,10 +98,10 @@ PASSWORD
 ```
 
 在 `/opt/pocketlink/.env` 写入以下内容，设置权限为 `600`。固定镜像摘要来自
-[已通过的 CI 构建](https://github.com/androidmumo/pocketlink/actions/runs/35566238838)，不要把浮动 `edge` 当作固定版本。
+[已通过的 CI 构建](https://github.com/androidmumo/pocketlink/actions/runs/35569404072)，不要把浮动 `edge` 当作固定版本。
 
 ```dotenv
-POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:c8c2a29b3cf9fe0c3efc0b917fb56e4b0d34c4f7dbe4ac872393062fa3dbdee6
+POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:6d4b49389dc2e2334d31518e7dbad19df223c85d399b7231afcdc3555987a480
 POCKETLINK_HTTP_PORT=3002
 POCKETLINK_LOG_LEVEL=info
 POCKETLINK_PUBLIC_ORIGIN=https://pocketlink.mcloc.cn
