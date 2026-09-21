@@ -35,7 +35,7 @@ SQLite persists in a dedicated directory. HTTPS login/logout, restart session in
 backup recovery and database integrity were verified. Physical device pairing is unverified.
 
 
-Signed OTA management was deployed on 2026-09-20: upload, publish, withdraw and delete firmware packages. OTA `0.4.2` (sequence 2) is now published with battery display, loading feedback and input locking, plus provisioning cancellation and message paging. Devices with the initial wired OTA installation can upgrade online. The user confirmed 0.4.2 installation, battery display and operation feedback; other dedicated acceptance checks remain pending. See the [OTA guide](docs/development/firmware-ota.en.md). The pre-upgrade backup is `backups/before-ota-20260920T021947Z.tar.gz`.
+Signed OTA management was deployed on 2026-09-20: upload, publish, withdraw and delete firmware packages. OTA `0.4.3` (sequence 3) is now published with quiet background work and single-line manual loading feedback, retaining battery display, provisioning cancellation and message paging. Devices with the initial wired OTA installation can upgrade online. The user confirmed 0.4.2 installation, battery display and operation feedback; other dedicated acceptance checks remain pending. See the [OTA guide](docs/development/firmware-ota.en.md). The pre-upgrade backup is `backups/before-ota-20260920T021947Z.tar.gz`.
 
 Invite registration, isolated accounts, shared rooms and the redesigned console were deployed on 2026-09-21. Existing data belongs to the administrator; the password file and device credentials are preserved. The pre-upgrade backup is `backups/before-accounts-20260921T060225Z.tar.gz`; reverting to an old image also requires restoring its matching database.
 

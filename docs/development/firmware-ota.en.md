@@ -6,7 +6,14 @@ Implemented in source; the user confirmed the 0.4.2 online upgrade and its displ
 Packages update the PocketLink application only, not other games, bootloaders or partition tables.
 The server needs migration 004; provisioning and text reception still work with the older server.
 
-## Current OTA release 0.4.2 (2026-09-21)
+## Current OTA release 0.4.3 (2026-09-21)
+
+Published `0.4.3`, sequence `3`, size `2,211,920` bytes, SHA256 `3361ca51a0d645d99008e860e653ae1a010b6604f8894cad7ceddb4939c1afbe`, from source commit `a8afe48`. Background polling, battery reads, reconnects and update checks no longer trigger loading or claim the interaction lock. Manual slow actions show a single-line wait message with a trailing spinner. Immediate page turns do not show loading; queued keys cannot act on a changed message/view.
+
+The full local host gate, both firmware builds and protected-layout checks passed; the server verified and published the package. Physical idle behavior and the one-line indicator await user confirmation. The consistent backup `backups/before-ota-0.4.3-20260921T122133Z.db` passed integrity checks. No service restart or change to other applications was needed.
+
+
+## Previous OTA release 0.4.2 (2026-09-21)
 
 Published `0.4.2`, sequence `2`, size `2,211,520` bytes, SHA256 `5b058a123415b71497388440408ff6171d7bb8fc0e9da17080add4cf099b7a6d`, from source commit `b4ab64a`. It adds CW2017 battery percentage, independent text loading animation and input locking during work, retaining 0.4.1 cancellation and paging. Local host checks, both firmware builds and protected-layout checks passed. The user confirmed OTA completion, battery display and loading/input-lock behavior on the device. Gauge accuracy, prolonged charge/discharge and power-loss rollback remain unverified.
 
