@@ -70,7 +70,7 @@ func TestRegistrationAtomicExpiryAndPersistence(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer func() { db.Close() }()
-	if e = db.CreateInvitation(ctx, "i", "single-code", "registration", "", 10); e != nil {
+	if e = db.CreateInvitation(ctx, "i", "single-code", "", "registration", "", 10); e != nil {
 		t.Fatal(e)
 	}
 	var success atomic.Int32
@@ -91,7 +91,7 @@ func TestRegistrationAtomicExpiryAndPersistence(t *testing.T) {
 	if success.Load() != 1 {
 		t.Fatal(success.Load())
 	}
-	if e = db.CreateInvitation(ctx, "expired", "expired-code", "registration", "", 10); e != nil {
+	if e = db.CreateInvitation(ctx, "expired", "expired-code", "", "registration", "", 10); e != nil {
 		t.Fatal(e)
 	}
 	if _, e = db.Register(ctx, "expired-user", "expired_user", "expired-code", nil, nil, 10+7*86400); !errors.Is(e, ErrDenied) {

@@ -21,3 +21,6 @@ coverage.out
 
 !services/relay/internal/firmware/trust.pem
 !firmware/components/pocketlink_ota/trust.pem
+
+*.invitation-key
+.invitation-key-*

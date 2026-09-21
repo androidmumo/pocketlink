@@ -141,3 +141,33 @@ func TestRegistrationInviteConsumption(t *testing.T) {
 	}
 	responseData(t, jsonCall(t, a, "POST", "auth/register", map[string]string{"username": "revoked_user", "password": "user-password-for-tests", "code": code}, nil), 400)
 }
+
+func TestInvitationCodeEndpoint(t *testing.T) {
+	a, _ := fixture(t)
+	admin := login(t, a)
+	alice := newAccount(t, a, admin, "alice")
+	v := responseData(t, jsonCall(t, a, "POST", "invitations", map[string]string{"kind": "registration"}, admin), 201)
+	path := "invitations/" + v["id"].(string) + "/code"
+	responseData(t, jsonCall(t, a, "GET", path, nil, nil), 401)
+	responseData(t, jsonCall(t, a, "GET", path, nil, alice), 404)
+	r := jsonCall(t, a, "GET", path, nil, admin)
+	if r.Header.Get("Cache-Control") != "no-store" {
+		t.Fatal("code response cacheable")
+	}
+	got := responseData(t, r, 200)
+	if got["code"] != v["code"] {
+		t.Fatal("code mismatch")
+	}
+	list := responseData(t, jsonCall(t, a, "GET", "invitations", nil, admin), 200)
+	for _, raw := range list["invitations"].([]any) {
+		entry := raw.(map[string]any)
+		if _, ok := entry["code"]; ok {
+			t.Fatal("code disclosed in list")
+		}
+		if _, ok := entry["encrypted_code"]; ok {
+			t.Fatal("ciphertext disclosed")
+		}
+	}
+	responseData(t, jsonCall(t, a, "DELETE", "invitations/"+v["id"].(string), nil, admin), 200)
+	responseData(t, jsonCall(t, a, "GET", path, nil, admin), 404)
+}

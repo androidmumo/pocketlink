@@ -91,3 +91,10 @@ On 2026-09-21, invite registration, account isolation, shared rooms and the rede
 A subsequent deployment on 2026-09-21 fixes console scrolling: the document and navigation remain stationary while content scrolls independently. Browser checks passed at five desktop, mobile and landscape sizes. The backup is `backups/before-scroll-20260921T064947Z.tar.gz`; the schema is unchanged. Production CSS matches the verified file, HTTPS login/API/logout and container health checks passed, and other containers were not restarted.
 
 On 2026-09-21 the bounded message-history region was deployed: at most 420px and half the viewport, with internal scrolling. Backup `backups/before-history-20260921T115006Z.tar.gz` contains data/configuration and passed extracted-database integrity checks. Production CSS matches the browser-verified file; HTTPS login/API/logout passed and other containers were not restarted. OTA 0.4.2 (sequence 2) remains published; the user confirmed online installation, battery display and loading/input locking.
+
+## Invitation recovery and release dates
+
+A recovery key is automatically stored beside the database with the `.invitation-key` suffix (default `data/relay.db.invitation-key`, mode 0600). Back up and restore the **entire data directory**, including the matching key, not SQLite alone. Startup refuses to replace a missing key when encrypted invitations exist; restore the matching backup instead. The key is independent of administrator password changes. Access to both the database and key exposes active codes; protect both and their backups as credentials.
+
+
+The custom room picker supports arrow keys, Enter and Escape. New active invitations can be viewed and copied again; lost legacy codes must be revoked and replaced. The release library shows upload time and latest publication time in the browser time zone. Historical missing publication dates display “Not recorded”, never the upload time. Repeating publication of the active release preserves its timestamp; withdrawal retains it, and republication updates it.

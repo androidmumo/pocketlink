@@ -16,7 +16,7 @@ func Handler() http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("Cache-Control", "no-store")
-		if r.URL.Path != "/" && r.URL.Path != "/assets/app.js" && r.URL.Path != "/assets/style.css" {
+		if r.URL.Path != "/" && r.URL.Path != "/assets/app.js" && r.URL.Path != "/assets/room-picker.js" && r.URL.Path != "/assets/style.css" {
 			http.NotFound(w, r)
 			return
 		}

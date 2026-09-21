@@ -7,6 +7,7 @@ static() {
     command -v shellcheck >/dev/null 2>&1 || { echo "ERROR: shellcheck missing; see docs/development/setup.md" >&2; return 1; }
     python3 tools/check-repo.py
     node --check apps/console/assets/app.js
+    node --check apps/console/assets/room-picker.js
     test -z "$(gofmt -l apps/console/*.go)"
     scratch="$(mktemp -d "${TMPDIR:-/tmp}/pocketlink-check.XXXXXX")"
     trap 'rm -rf -- "${scratch}"' EXIT

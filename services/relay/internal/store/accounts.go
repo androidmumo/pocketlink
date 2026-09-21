@@ -12,16 +12,19 @@ type User struct {
 	CreatedAt int64  `json:"created_at"`
 }
 type Invitation struct {
-	ID        string  `json:"id"`
-	Kind      string  `json:"kind"`
-	RoomID    *string `json:"room_id"`
-	CreatedAt int64   `json:"created_at"`
-	ExpiresAt int64   `json:"expires_at"`
-	UsedAt    *int64  `json:"used_at"`
-	RevokedAt *int64  `json:"revoked_at"`
+	ID            string  `json:"id"`
+	Kind          string  `json:"kind"`
+	RoomID        *string `json:"room_id"`
+	CreatedAt     int64   `json:"created_at"`
+	ExpiresAt     int64   `json:"expires_at"`
+	UsedAt        *int64  `json:"used_at"`
+	RevokedAt     *int64  `json:"revoked_at"`
+	CodeAvailable bool    `json:"code_available"`
 }
 
-func (s *Store) ForUser(id string) *Store { return &Store{db: s.db, actor: id} }
+func (s *Store) ForUser(id string) *Store {
+	return &Store{db: s.db, actor: id, invitationKey: s.invitationKey}
+}
 func (s *Store) actorID() string {
 	if s.actor == "" {
 		return "admin"
@@ -88,12 +91,12 @@ func (s *Store) Register(ctx context.Context, id, username, code string, salt, h
 	if _, e = tx.ExecContext(ctx, "INSERT INTO users(id,username,password_salt,password_hash,created_at) VALUES(?,?,?,?,?)", id, username, salt, hash, now); e != nil {
 		return User{}, e
 	}
-	if _, e = tx.ExecContext(ctx, "UPDATE invitations SET used_at=?,used_by=? WHERE id=?", now, id, invite); e != nil {
+	if _, e = tx.ExecContext(ctx, "UPDATE invitations SET used_at=?,used_by=?,encrypted_code=NULL WHERE id=?", now, id, invite); e != nil {
 		return User{}, e
 	}
 	return User{id, username, now}, tx.Commit()
 }
-func (s *Store) CreateInvitation(ctx context.Context, id, hash, kind, room string, now int64) error {
+func (s *Store) CreateInvitation(ctx context.Context, id, hash, code, kind, room string, now int64) error {
 	tx, e := s.db.BeginTx(ctx, nil)
 	if e != nil {
 		return e
@@ -119,7 +122,7 @@ func (s *Store) CreateInvitation(ctx context.Context, id, hash, kind, room strin
 	} else {
 		return ErrInvalid
 	}
-	// Expired records carry no secrets and need not accumulate forever.
+	// Expired records need not accumulate forever.
 	if _, e = tx.ExecContext(ctx, "DELETE FROM invitations WHERE expires_at<=?", now); e != nil {
 		return e
 	}
@@ -130,14 +133,24 @@ func (s *Store) CreateInvitation(ctx context.Context, id, hash, kind, room strin
 	if count >= 1024 {
 		return ErrLimit
 	}
-	_, e = tx.ExecContext(ctx, "INSERT INTO invitations(id,code_hash,kind,room_id,created_by,created_at,expires_at) VALUES(?,?,?,?,?,?,?)", id, hash, kind, roomValue, s.actorID(), now, now+7*86400)
+	var sealed []byte
+	if code != "" {
+		if invitationDigest(code) != hash {
+			return ErrInvalid
+		}
+		sealed, e = s.sealInvitation(id, code)
+		if e != nil {
+			return e
+		}
+	}
+	_, e = tx.ExecContext(ctx, "INSERT INTO invitations(id,code_hash,kind,room_id,created_by,created_at,expires_at,encrypted_code) VALUES(?,?,?,?,?,?,?,?)", id, hash, kind, roomValue, s.actorID(), now, now+7*86400, sealed)
 	if e != nil {
 		return e
 	}
 	return tx.Commit()
 }
 func (s *Store) Invitations(ctx context.Context) ([]Invitation, error) {
-	rows, e := s.db.QueryContext(ctx, "SELECT id,kind,room_id,created_at,expires_at,used_at,revoked_at FROM invitations WHERE created_by=? ORDER BY created_at DESC,id", s.actorID())
+	rows, e := s.db.QueryContext(ctx, "SELECT id,kind,room_id,created_at,expires_at,used_at,revoked_at,encrypted_code IS NOT NULL FROM invitations WHERE created_by=? ORDER BY created_at DESC,id", s.actorID())
 	if e != nil {
 		return nil, e
 	}
@@ -145,7 +158,7 @@ func (s *Store) Invitations(ctx context.Context) ([]Invitation, error) {
 	out := []Invitation{}
 	for rows.Next() {
 		var v Invitation
-		if e = rows.Scan(&v.ID, &v.Kind, &v.RoomID, &v.CreatedAt, &v.ExpiresAt, &v.UsedAt, &v.RevokedAt); e != nil {
+		if e = rows.Scan(&v.ID, &v.Kind, &v.RoomID, &v.CreatedAt, &v.ExpiresAt, &v.UsedAt, &v.RevokedAt, &v.CodeAvailable); e != nil {
 			return nil, e
 		}
 		out = append(out, v)
@@ -153,7 +166,7 @@ func (s *Store) Invitations(ctx context.Context) ([]Invitation, error) {
 	return out, rows.Err()
 }
 func (s *Store) RevokeInvitation(ctx context.Context, id string, now int64) error {
-	r, e := s.db.ExecContext(ctx, "UPDATE invitations SET revoked_at=COALESCE(revoked_at,?) WHERE id=? AND created_by=?", now, id, s.actorID())
+	r, e := s.db.ExecContext(ctx, "UPDATE invitations SET revoked_at=COALESCE(revoked_at,?),encrypted_code=NULL WHERE id=? AND created_by=?", now, id, s.actorID())
 	if e != nil {
 		return e
 	}
@@ -183,7 +196,7 @@ func (s *Store) JoinRoom(ctx context.Context, hash string, now int64) (string, e
 	if _, e = tx.ExecContext(ctx, `INSERT OR IGNORE INTO room_users(room_id,user_id,since_message_id) VALUES(?,?,(SELECT COALESCE(MAX(id),0) FROM messages))`, room, s.actorID()); e != nil {
 		return "", e
 	}
-	if _, e = tx.ExecContext(ctx, "UPDATE invitations SET used_at=?,used_by=? WHERE id=?", now, s.actorID(), id); e != nil {
+	if _, e = tx.ExecContext(ctx, "UPDATE invitations SET used_at=?,used_by=?,encrypted_code=NULL WHERE id=?", now, s.actorID(), id); e != nil {
 		return "", e
 	}
 	return room, tx.Commit()

@@ -5,7 +5,7 @@
 ## Usage
 
 1. Select Administrator on the login page and use the existing server password file. There is no default password; registration never grants administrator privileges.
-2. Open Invitations, create a registration code and share it privately. The full code is displayed only once. It expires after seven days, can be consumed once, and can be revoked before use.
+2. Open Invitations, create a registration code and share it privately. New active codes can be displayed again using View / Copy in the list, then copied using Copy invitation. It expires after seven days, can be consumed once, and can be revoked before use.
 3. The recipient selects Invite registration, supplies a username, password and code, then signs in with the new account.
 4. Generate a device pairing code under My devices. The device belongs to the account that generated that code. Device codes still expire after ten minutes and are separate from registration invitations.
 5. Create a room and choose Invite under Room partners. A signed-in friend enters that room code under Join a friend's room to accept.
@@ -38,7 +38,8 @@ Browser writes retain exact Origin validation, Secure/HttpOnly/SameSite=Strict c
 | `POST /api/v1/auth/register` | `{username,password,code}`; atomically consumes a registration invitation; sign in afterward |
 | `GET /api/v1/auth/me` | `{authenticated,user:{id,username,created_at},role}` |
 | `GET /api/v1/invitations` | Own invitation metadata, without codes or hashes |
-| `POST /api/v1/invitations` | `{kind:"registration"}` or `{kind:"room",room_id}`; one-time `{id,code,expires_at}` response |
+| `POST /api/v1/invitations` | `{kind:"registration"}` or `{kind:"room",room_id}`; `{id,code,expires_at}` response |
+| `GET /api/v1/invitations/{id}/code` | Creator only: returns `{code}` for an active recoverable invitation; list metadata has `code_available`, never the code |
 | `DELETE /api/v1/invitations/{id}` | Revoke an invitation created by the current user |
 | `POST /api/v1/rooms/join` | `{code}`; accept a room invitation, returns `{room_id}` |
 | `GET /api/v1/rooms/{id}/users` | Room owner and accepted partners |
@@ -48,7 +49,7 @@ Existing device, room and message paths remain, with server-side account authori
 
 ## Storage, limits and upgrades
 
-Migration `005_accounts.sql` introduces users, invitations, room users and ownership of devices/pairings/rooms. Existing records belong to `admin`; device credentials, messages and receipts remain intact. User passwords use independent random salts and 600,000 PBKDF2-HMAC-SHA256 iterations. Invitations contain 256 random bits; only SHA-256 digests are stored, and consumption is atomic with registration or joining.
+Migration `005_accounts.sql` introduces users, invitations, room users and ownership of devices/pairings/rooms. Existing records belong to `admin`; device credentials, messages and receipts remain intact. User passwords use independent random salts and 600,000 PBKDF2-HMAC-SHA256 iterations. Invitations contain 256 random bits; SHA-256 digests are used for validation, and consumption is atomic with registration or joining.
 
 Limits: 256 accounts including administrator, 1,024 unexpired invitation records, 256 browser sessions with at most 16 per account. Sessions expire after 12 hours or a server restart. Creating invitations removes expired records; the list is not a long-term audit log. Login, registration and device pairing share 20 attempts per minute globally, with one concurrent password computation. Message-related writes retain the global 120/minute limit. Existing device/room/message limits remain.
 
@@ -57,3 +58,7 @@ Back up the database and deployment configuration before upgrading. Old images c
 ## Validation
 
 Host tests cover populated legacy migration, cross-account denial, expiry/revocation/concurrent single consumption, database reopen, pre-join history isolation, removal withdrawing delivery, SN ownership and administrator-only firmware management. `tests/console/browser.cjs` only accepts a disposable loopback HTTPS server. It exercises registration/login, pairing, room messaging/receipts and desktop/mobile layout without production data.
+
+Migration `006_console.sql` adds AES-256-GCM encrypted originals for new invitations. Only their creator can retrieve active codes. Consumption and revocation clear ciphertext; expired codes and codes for archived rooms cannot be retrieved. Legacy hashes cannot be reversed; revoke and generate a replacement if the original was lost.
+
+A recovery key is automatically stored beside the database with the `.invitation-key` suffix (default `data/relay.db.invitation-key`, mode 0600). Back up and restore the **entire data directory**, including the matching key, not SQLite alone. Startup refuses to replace a missing key when encrypted invitations exist; restore the matching backup instead. The key is independent of administrator password changes. Access to both the database and key exposes active codes; protect both and their backups as credentials.

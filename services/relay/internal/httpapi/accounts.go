@@ -188,11 +188,19 @@ func (a *Auth) accountHTTP(w http.ResponseWriter, r *http.Request) bool {
 		code := secret()
 		id := recordID()
 		now := time.Now().Unix()
-		e := db.CreateInvitation(r.Context(), id, digest(code), input.Kind, input.RoomID, now)
+		e := db.CreateInvitation(r.Context(), id, digest(code), code, input.Kind, input.RoomID, now)
 		if e != nil {
 			a.messageError(w, e)
 		} else {
 			write(w, 201, map[string]any{"id": id, "code": code, "expires_at": now + 7*86400})
+		}
+	case strings.HasPrefix(path, "/api/v1/invitations/") && strings.HasSuffix(path, "/code") && r.Method == "GET":
+		id := strings.TrimSuffix(strings.TrimPrefix(path, "/api/v1/invitations/"), "/code")
+		code, e := db.InvitationCode(r.Context(), id, time.Now().Unix())
+		if e != nil {
+			a.messageError(w, e)
+		} else {
+			write(w, 200, map[string]string{"code": code})
 		}
 	case strings.HasPrefix(path, "/api/v1/invitations/") && r.Method == "DELETE":
 		e := db.RevokeInvitation(r.Context(), strings.TrimPrefix(path, "/api/v1/invitations/"), time.Now().Unix())

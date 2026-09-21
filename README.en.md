@@ -293,3 +293,10 @@ No project-wide license has been selected. Imported AI Passport source retains i
 dependency licenses remain applicable.
 
 Signed OTA source and usage (device acceptance pending): [OTA](docs/development/firmware-ota.en.md)
+
+## Invitation recovery and release dates
+
+A recovery key is automatically stored beside the database with the `.invitation-key` suffix (default `data/relay.db.invitation-key`, mode 0600). Back up and restore the **entire data directory**, including the matching key, not SQLite alone. Startup refuses to replace a missing key when encrypted invitations exist; restore the matching backup instead. The key is independent of administrator password changes. Access to both the database and key exposes active codes; protect both and their backups as credentials.
+
+
+The custom room picker supports arrow keys, Enter and Escape. New active invitations can be viewed and copied again; lost legacy codes must be revoked and replaced. The release library shows upload time and latest publication time in the browser time zone. Historical missing publication dates display “Not recorded”, never the upload time. Repeating publication of the active release preserves its timestamp; withdrawal retains it, and republication updates it.

@@ -137,7 +137,9 @@ async function refreshFirmware() {
   for(const release of releases) {
     const item=document.createElement("li"), label=document.createElement("span");
     label.textContent=`${release.version} · 序号 ${release.sequence} · ${Math.ceil(release.size/1024)} KiB · ${release.active?"已发布":"未发布"}`;
-    item.append(label);
+    const dates=document.createElement("small");dates.className="release-dates";
+    dates.textContent="上传时间："+new Date(release.created_at*1000).toLocaleString()+" · 最近发布时间："+(release.published_at?new Date(release.published_at*1000).toLocaleString():"未记录");
+    label.append(dates);item.append(label);
     const publish=document.createElement("button");publish.className="secondary";publish.textContent=release.active?"撤回发布":"发布";
     publish.onclick=()=>perform(publish,async()=>{
       if(!confirm(release.active?"撤回后停止新的下载，已经开始的升级可能继续。确认撤回？":`发布 ${release.version}？设备检查后仍需按键确认升级。`))return;
@@ -197,7 +199,7 @@ async function createInvitation(kind,room){
  const data=await api("invitations","POST",{kind,room_id:room||""});
  $("invitation-result").hidden=false;$("invitation-title").textContent=kind==="registration"?"账号注册邀请码":"房间加入邀请码";
  $("invitation-code").textContent=data.code;$("invitation-expiry").textContent="有效至 "+new Date(data.expires_at*1000).toLocaleString()+" · 一次有效，请及时复制保存";
- await refreshInvitations();showView("invitations");status("邀请码已生成，完整内容仅本次显示。");
+ await refreshInvitations();showView("invitations");status("邀请码已生成，有效期内可在下方再次查看和复制。");
 }
 $("create-invitation").onclick=()=>perform($("create-invitation"),()=>createInvitation("registration"));
 $("invite-room").onclick=()=>perform($("invite-room"),()=>createInvitation("room",selectedRoom()));
@@ -209,7 +211,11 @@ async function refreshInvitations(){
   const state=entry.revoked_at!==null?"已撤销":entry.used_at!==null?"已使用":entry.expires_at*1000<=Date.now()?"已过期":"待使用";
   const room=roomRows.find(r=>r.id===entry.room_id);
   text.textContent=(entry.kind==="registration"?"账号注册":("房间 · "+(room?.name||"已归档房间")))+" · "+state+" · "+new Date(entry.expires_at*1000).toLocaleDateString()+" 到期";li.append(text);
-  if(state==="待使用"){const revoke=document.createElement("button");revoke.className="secondary";revoke.textContent="撤销";revoke.onclick=()=>perform(revoke,async()=>{await api("invitations/"+entry.id,"DELETE");await refreshInvitations();$("invitation-result").hidden=true;$("invitation-code").textContent="";status("邀请码已撤销。");});li.append(revoke);}
+  if(state==="待使用"){
+   if(entry.code_available){const view=document.createElement("button");view.className="secondary";view.textContent="查看 / 复制";
+    view.onclick=()=>perform(view,async()=>{const data=await api("invitations/"+entry.id+"/code");$("invitation-result").hidden=false;$("invitation-title").textContent=entry.kind==="registration"?"账号注册邀请码":"房间加入邀请码";$("invitation-code").textContent=data.code;$("invitation-expiry").textContent="有效至 "+new Date(entry.expires_at*1000).toLocaleString();$("copy-invitation").focus();status("邀请码已显示，可点击复制。");});li.append(view);
+   }else{const legacy=document.createElement("small");legacy.textContent="旧邀请码未保存原码；如已遗失，请撤销后重新生成。";li.append(legacy);}
+   const revoke=document.createElement("button");revoke.className="secondary";revoke.textContent="撤销";revoke.onclick=()=>perform(revoke,async()=>{await api("invitations/"+entry.id,"DELETE");await refreshInvitations();$("invitation-result").hidden=true;$("invitation-code").textContent="";status("邀请码已撤销。");});li.append(revoke);}
   $("invitation-list").append(li);
  }
 }

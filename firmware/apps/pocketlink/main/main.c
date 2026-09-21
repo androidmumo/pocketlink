@@ -144,7 +144,7 @@ static void render_message(void) {
         displayed_message_id = saved.inbox.id;
         message_page = 0;
     }
-    const char *text = saved.inbox.id ? saved.inbox.text : "等待消息\n\n长按确定键开始配网";
+    const char *text = saved.inbox.id ? saved.inbox.text : "等待消息";
     pl_page page = pl_page_find(text, 8, message_page, message_next_line, NULL);
     message_page = page.index;
     memcpy(page_text, text + page.begin, page.end - page.begin);

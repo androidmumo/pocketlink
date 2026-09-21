@@ -23,3 +23,11 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 }
 
 #message-history{max-height:min(420px,50dvh);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:8px}
+
+.room-picker{white-space:normal;overflow-wrap:anywhere;display:flex;justify-content:space-between;width:100%;margin:8px 0 20px;padding:13px 16px;background:var(--white);color:var(--ink);border:1px solid #d9e4dd;border-radius:12px;text-align:left;font:inherit}
+.room-picker:focus-visible{outline:3px solid #9ac6ad;outline-offset:2px}
+.room-options{position:fixed;z-index:1000;overflow-y:auto;overscroll-behavior:contain;padding:6px;background:#fff;border:1px solid #d9e4dd;border-radius:12px;box-shadow:0 12px 36px #173c2526}
+.room-options [role=option]{padding:11px 12px;border-radius:8px;cursor:pointer;overflow-wrap:anywhere}
+.room-options [role=option]:hover,.room-options .highlighted{background:#eef5ef}
+.room-options [aria-selected=true]{color:#276344;font-weight:600}
+.release-dates{display:block;margin-top:8px;color:#687b70;font-weight:400;line-height:1.7}

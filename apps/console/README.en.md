@@ -20,3 +20,5 @@ three device buttons. No pairing firmware is included in this increment.
 The responsive workspace includes overview, devices, rooms/messages, invitations and administrator-only firmware management. See [accounts and invitations](../../docs/development/accounts.en.md).
 
 Message history is capped at 420px and half the viewport height. Long histories scroll internally while the composer stays outside. The history region supports keyboard focus for scrolling.
+
+The custom room picker supports touch, arrow keys, Enter and Escape. Active new invitations can be viewed/copied again; lost legacy codes require revocation and replacement. The library displays upload and latest publication dates, explicitly marking missing historical dates. See [account storage](../../docs/development/accounts.en.md) for recovery-key backups.

@@ -7,6 +7,7 @@ import (
 	"github.com/androidmumo/pocketlink/services/relay/internal/testfirmware"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestFirmwareLifecycleAndSequence(t *testing.T) {
@@ -28,8 +29,25 @@ func TestFirmwareLifecycleAndSequence(t *testing.T) {
 	if _, e = s.FirmwareManifest(ctx); !errors.Is(e, ErrNotFound) {
 		t.Fatal("unpublished firmware visible", e)
 	}
+	before := time.Now().Unix()
+	unpublished, _ := s.FirmwareReleases(ctx)
+	if unpublished[0].PublishedAt != nil {
+		t.Fatal("upload assigned publication time")
+	}
 	if e = s.PublishFirmware(ctx, m.SHA256); e != nil {
 		t.Fatal(e)
+	}
+	published, _ := s.FirmwareReleases(ctx)
+	stamp := published[0].PublishedAt
+	if stamp == nil || *stamp < before || *stamp > time.Now().Unix() {
+		t.Fatal("missing publication timestamp")
+	}
+	if e = s.PublishFirmware(ctx, m.SHA256); e != nil {
+		t.Fatal(e)
+	}
+	repeated, _ := s.FirmwareReleases(ctx)
+	if *repeated[0].PublishedAt != *stamp {
+		t.Fatal("idempotent publication changed timestamp")
 	}
 	if e = s.DeleteFirmware(ctx, m.SHA256); !errors.Is(e, ErrConflict) {
 		t.Fatal("deleted active firmware", e)
@@ -47,6 +65,10 @@ func TestFirmwareLifecycleAndSequence(t *testing.T) {
 	}
 	if e = s.PublishFirmware(ctx, ""); e != nil {
 		t.Fatal(e)
+	}
+	withdrawn, _ := s.FirmwareReleases(ctx)
+	if withdrawn[0].Active || *withdrawn[0].PublishedAt != *stamp {
+		t.Fatal("withdrawal lost timestamp")
 	}
 	if _, e = s.FirmwareImage(ctx, m.SHA256); !errors.Is(e, ErrNotFound) {
 		t.Fatal("withdrawn download", e)

@@ -20,8 +20,9 @@ import (
 var migrations embed.FS
 
 type Store struct {
-	db    *sql.DB
-	actor string
+	db            *sql.DB
+	actor         string
+	invitationKey []byte
 }
 
 func Open(ctx context.Context, path string) (*Store, error) {
@@ -61,7 +62,11 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	if err = migrate(ctx, db, migrations); err != nil {
 		return fail(err)
 	}
-	return &Store{db: db}, nil
+	key, err := invitationKey(ctx, db, absolute+".invitation-key")
+	if err != nil {
+		return fail(err)
+	}
+	return &Store{db: db, invitationKey: key}, nil
 }
 
 func migrate(ctx context.Context, db *sql.DB, source fs.FS) error {
