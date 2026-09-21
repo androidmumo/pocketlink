@@ -20,6 +20,8 @@
 #include "bsp_display.h"
 #include "bsp_button.h"
 #include "lvgl.h"
+#include "src/misc/lv_text_private.h"
+#include "pocketlink_pages.h"
 #include "cJSON.h"
 #include "esp_crt_bundle.h"
 #include "esp_event.h"
@@ -55,7 +57,7 @@ typedef struct {
     pl_config config;
     pl_inbox inbox;
 } saved_state;
-typedef enum { CMD_CONFIG, CMD_SCAN, CMD_KEY } command_kind;
+typedef enum { CMD_CONFIG, CMD_SCAN, CMD_KEY, CMD_CANCEL_PORTAL } command_kind;
 typedef struct {
     command_kind kind;
     pl_config config;
@@ -71,6 +73,9 @@ static nvs_handle_t storage;
 static httpd_handle_t http;
 static bool ap_active, busy, url_qr, ota_prompt;
 static pl_ota_offer ota_offer;
+static size_t message_page;
+static int64_t displayed_message_id;
+static char page_text[PL_TEXT_LIMIT + 1];
 static char status_text[160] = "正在启动";
 static char token[33], ap_name[33], ap_password[17], serial[32];
 static char scan_names[16][33];
@@ -97,6 +102,29 @@ static bool persist(const saved_state *value) {
     lock(); saved = *value; unlock();
     return true;
 }
+/* Use the pinned LVGL line breaker so page boundaries match the actual font. */
+static size_t message_next_line(const char *text, size_t remaining, void *context) {
+    (void)context;
+    lv_text_attributes_t attributes = {0};
+    attributes.max_width = 206;
+    return lv_text_get_next_line(text, remaining, &pocketlink_font_14, NULL, &attributes);
+}
+static void render_message(void) {
+    if (displayed_message_id != saved.inbox.id) {
+        displayed_message_id = saved.inbox.id;
+        message_page = 0;
+    }
+    const char *text = saved.inbox.id ? saved.inbox.text : "等待消息\n\n长按确定键开始配网";
+    pl_page page = pl_page_find(text, 8, message_page, message_next_line, NULL);
+    message_page = page.index;
+    memcpy(page_text, text + page.begin, page.end - page.begin);
+    page_text[page.end - page.begin] = 0;
+    lv_label_set_text(message_label, page_text);
+    if (saved.inbox.id && page.count > 1)
+        lv_label_set_text_fmt(hint, "第 %u/%u 页 · 上下翻页\n确定：已读 · 长按：配网\n长按上键：检查更新", (unsigned)page.index + 1, (unsigned)page.count);
+    else
+        lv_label_set_text(hint, saved.inbox.id ? "确定：已读\n长按确定：配网\n长按上键：检查更新" : "长按确定：配网\n长按上键：检查更新");
+}
 static void render(void) {
     if (!bsp_lvgl_lock(1000)) return;
     if (ap_active) {
@@ -110,21 +138,18 @@ static void render(void) {
             lv_obj_add_flag(qr, LV_OBJ_FLAG_HIDDEN);
             lv_label_set_text(title, "二维码生成失败，请手动连接");
         }
-        lv_label_set_text_fmt(hint, "%s\n密码 %s\n确定切换 · 10分钟后关闭", ap_name, ap_password);
+        lv_label_set_text_fmt(hint, "%s\n密码 %s\n确定切换 · 长按退出", ap_name, ap_password);
     } else if (ota_prompt) {
         lv_obj_add_flag(qr, LV_OBJ_FLAG_HIDDEN);
         lv_obj_remove_flag(message_box, LV_OBJ_FLAG_HIDDEN);
         lv_label_set_text(title, "发现固件更新");
         lv_label_set_text_fmt(message_label, "版本 %s\n序号 %lld\n大小 %d KB\n\n签名已验证。\n升级期间请保持供电。", ota_offer.version, (long long)ota_offer.sequence, ota_offer.size / 1024);
-        lv_obj_scroll_to_y(message_box, 0, LV_ANIM_OFF);
         lv_label_set_text(hint, "长按下键：确认升级\n确定：取消");
     } else {
         lv_obj_add_flag(qr, LV_OBJ_FLAG_HIDDEN);
         lv_obj_remove_flag(message_box, LV_OBJ_FLAG_HIDDEN);
         lv_label_set_text(title, saved.inbox.id ? "收到文字消息" : "PocketLink");
-        lv_label_set_text(message_label, saved.inbox.id ? saved.inbox.text : "等待消息\n\n长按确定键开始配网");
-        lv_obj_scroll_to_y(message_box, 0, LV_ANIM_OFF);
-        lv_label_set_text(hint, "上下：滚动 · 确定：已读\n长按确定配网 · 长按上键查更新");
+        render_message();
     }
     bsp_lvgl_unlock();
 }
@@ -132,7 +157,10 @@ static void button(bsp_btn_t key, bsp_btn_ev_t event, void *user) {
     (void)user;
     if (event != BSP_BTN_CLICK && event != BSP_BTN_LONG) return;
     command cmd = {.kind = CMD_KEY, .key = key, .event = event};
-    xQueueSend(commands, &cmd, 0);
+    if (key == BSP_BTN_OK && event == BSP_BTN_LONG && portal_active()) {
+        cmd.kind = CMD_CANCEL_PORTAL;
+        xQueueSendToFront(commands, &cmd, 0);
+    } else xQueueSend(commands, &cmd, 0);
 }
 static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
     (void)arg; (void)data;
@@ -463,11 +491,17 @@ static void start_portal(void) {
     ap_deadline = esp_timer_get_time() + AP_LIFETIME_US; url_qr = false;
     set_status("连接后打开 192.168.4.1；可忽略无互联网提示"); render();
 }
-static void stop_portal(void) {
+static void stop_portal(bool restore_network) {
     lock(); ap_active = false; busy = false; memset(token, 0, sizeof(token)); unlock();
     if (http) { httpd_stop(http); http = NULL; }
     esp_wifi_set_mode(WIFI_MODE_STA);
-    memset(ap_password, 0, sizeof(ap_password)); render();
+    memset(ap_password, 0, sizeof(ap_password));
+    if (restore_network) {
+        /* A failed attempt may have connected to a different network. Reconnect saved state. */
+        esp_wifi_disconnect();
+        xEventGroupClearBits(events, LINK_UP);
+    }
+    render();
 }
 static void scan_wifi(void) {
     set_status("正在扫描附近 2.4 GHz 网络");
@@ -521,7 +555,7 @@ static void configure(command *cmd) {
     next.config = cmd->config;
     if (!persist(&next)) return;
     set_status("配置已保存，设备已绑定；热点即将关闭");
-    vTaskDelay(pdMS_TO_TICKS(4000)); stop_portal();
+    vTaskDelay(pdMS_TO_TICKS(4000)); stop_portal(false);
     set_status("已连接服务器");
 }
 void app_main(void) {
@@ -531,6 +565,7 @@ void app_main(void) {
     bsp_display_backlight(70);
     assert(bsp_lvgl_lock(-1));
     lv_obj_t *screen = lv_screen_active();
+    lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(screen, &pocketlink_font_14, 0);
     lv_obj_set_style_bg_color(screen, lv_color_hex(0xf1f6f3), 0);
     title = lv_label_create(screen); lv_obj_set_pos(title, 10, 8); lv_obj_set_width(title, 220);
@@ -538,7 +573,12 @@ void app_main(void) {
     lv_qrcode_set_dark_color(qr, lv_color_black()); lv_qrcode_set_light_color(qr, lv_color_white());
     lv_obj_set_pos(qr, 30, 35); lv_obj_add_flag(qr, LV_OBJ_FLAG_HIDDEN);
     message_box = lv_obj_create(screen); lv_obj_set_pos(message_box, 5, 35); lv_obj_set_size(message_box, 230, 190);
-    message_label = lv_label_create(message_box); lv_obj_set_width(message_label, 198);
+    lv_obj_remove_flag(message_box, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_all(message_box, 10, 0);
+    lv_obj_set_style_border_width(message_box, 1, 0);
+    message_label = lv_label_create(message_box); lv_obj_set_width(message_label, 206);
+    lv_obj_set_style_text_line_space(message_label, 0, 0);
+    lv_obj_set_style_text_letter_space(message_label, 0, 0);
     status_label = lv_label_create(screen); lv_obj_set_pos(status_label, 10, 225); lv_obj_set_width(status_label, 220);
     hint = lv_label_create(screen); lv_obj_set_pos(hint, 10, 267); lv_obj_set_width(hint, 220);
     lv_obj_set_style_text_font(hint, &pocketlink_font_14, 0);
@@ -582,7 +622,12 @@ void app_main(void) {
     for (;;) {
         command cmd;
         if (xQueueReceive(commands, &cmd, pdMS_TO_TICKS(100)) == pdTRUE) {
-            if (cmd.kind == CMD_KEY) {
+            if (cmd.kind == CMD_CANCEL_PORTAL) {
+                if (ap_active) {
+                    stop_portal(true); next_reconnect = 0; next_poll = 0;
+                    set_status("已退出配网，原配置保留");
+                }
+            } else if (cmd.kind == CMD_KEY) {
                 if (ota_prompt) {
                     if(cmd.key==BSP_BTN_DOWN && cmd.event==BSP_BTN_LONG)install_update();
                     else if(cmd.key==BSP_BTN_OK && cmd.event==BSP_BTN_CLICK){ota_prompt=false;render();set_status("已取消升级，可长按上键再次检查");}
@@ -593,8 +638,11 @@ void app_main(void) {
                     saved_state next = saved; pl_inbox_read(&next.inbox);
                     if (persist(&next)) { set_status("已读回执等待服务器确认"); next_poll = 0; }
                 } else if (cmd.event == BSP_BTN_CLICK && !ap_active && bsp_lvgl_lock(500)) {
-                    if (cmd.key == BSP_BTN_UP || cmd.key == BSP_BTN_DOWN)
-                        lv_obj_scroll_by(message_box, 0, cmd.key == BSP_BTN_UP ? 70 : -70, LV_ANIM_OFF);
+                    if (saved.inbox.id && (cmd.key == BSP_BTN_UP || cmd.key == BSP_BTN_DOWN)) {
+                        if (cmd.key == BSP_BTN_UP && message_page) message_page--;
+                        if (cmd.key == BSP_BTN_DOWN) message_page++;
+                        render_message();
+                    }
                     bsp_lvgl_unlock();
                 }
             } else if (ap_active) {
@@ -604,7 +652,7 @@ void app_main(void) {
             memset(&cmd, 0, sizeof(cmd));
         }
         int64_t now = esp_timer_get_time();
-        if (ap_active && now >= ap_deadline) { stop_portal(); set_status("配网已超时关闭；长按确定重新开始"); }
+        if (ap_active && now >= ap_deadline) { stop_portal(true); next_reconnect = 0; set_status("配网已超时关闭；长按确定重新开始"); }
         if (!ap_active && saved.config.ssid[0] && !(xEventGroupGetBits(events) & LINK_UP) && now >= next_reconnect) {
             set_status("网络已断开，正在重连"); connect_wifi(&saved.config); next_reconnect = esp_timer_get_time() + 15000000;
         }

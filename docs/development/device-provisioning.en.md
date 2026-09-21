@@ -32,7 +32,7 @@ at the end. A successful build is not a guarantee of everyday device readiness.
 7. After the screen confirms the configuration was saved, the hotspot and local web
    server close after approximately four seconds. The phone can return to its normal network.
 8. Refresh the console, add the device to a room and send text. The device checks for
-   messages approximately every five seconds. Up/down scroll; OK marks the current
+   messages approximately every five seconds. Up/down turn pages; OK marks the current
    message read. After the read receipt is confirmed, the next message can arrive.
 
 Wi-Fi passwords never go to the relay. The page does not store configuration in
@@ -142,7 +142,7 @@ flashing a larger image across the protected partition. Initial wired installati
   hotspot shutdown after successful provisioning.
 - Wi-Fi changes retaining binding; server changes requiring pairing; refresh revealing
   neither Wi-Fi password nor device credential.
-- Two devices joining rooms, Chinese text scrolling, received/read status, network loss
+- Two devices joining rooms, Chinese text paging, received/read status, network loss
   and power loss while receiving or acknowledging.
 - Minimum available heap, task stack margins, prolonged reconnects, watchdog and display
   stability with Wi-Fi/TLS/QR active together.
@@ -152,3 +152,13 @@ inbox state recovery and page slow responses, duplicate submission and error rec
 Actual radio, button, display and physical power-loss behavior still need device acceptance.
 
 Signed OTA source and usage (device acceptance pending): [OTA](firmware-ota.en.md)
+
+## Cancel provisioning and read pages
+
+Long-press OK again to leave provisioning, retain saved settings and reconnect to the saved network. If a phone-submitted connection attempt is running, cancellation is processed when that operation finishes; it does not reopen the hotspot. Up/down now switch fixed text pages without scrolling or animation. Single-page messages do not move; multi-page messages show their page number. Receipt updates preserve the reading position. Verify cancellation after a failed Wi-Fi attempt and short, long, mixed-language and newline-heavy messages on hardware.
+
+## Bluetooth compatibility
+
+ESP32-C3 supports BLE, but this firmware does not enable Bluetooth provisioning yet. Android Chrome supports Web Bluetooth from HTTPS pages; common iPhone browsers do not offer equivalent support, so browser Bluetooth cannot be the sole entry point for both platforms. Hotspot provisioning remains available; a shared BLE experience needs a separate BLE-capable app or client. See [Chrome Web Bluetooth](https://developer.chrome.com/docs/capabilities/bluetooth).
+
+A future logged-in client can generate and transfer a single-use binding credential automatically, removing manual pairing-code entry. Account ownership verification must remain; SN alone must not authorize binding. Existing Wi-Fi-only reconfiguration already permits an empty pairing code while retaining the device binding.

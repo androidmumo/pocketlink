@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Allow long-OK cancellation of device provisioning with saved-network recovery; replace message scrolling with fixed pages, clamp short messages and preserve the page across receipt updates.
+
 - Fix unnecessary login-page scrolling and sidebar rubber-banding with a viewport-bound layout and independent content scrolling; keep forms accessible on small screens.
 
 - Add administrator-issued registration invites, isolated device ownership and room invitation/leave/removal. Migrate existing data to the administrator and redesign the responsive console with role-specific navigation, senders and invite management.
