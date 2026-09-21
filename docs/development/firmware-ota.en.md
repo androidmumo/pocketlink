@@ -2,11 +2,18 @@
 
 # Signed OTA firmware updates
 
-Implemented in source; device upgrades, power-loss rollback and peak memory remain unverified.
+Implemented in source; the user confirmed the 0.4.2 online upgrade and its display/input feedback. Power-loss rollback and peak memory remain unverified.
 Packages update the PocketLink application only, not other games, bootloaders or partition tables.
 The server needs migration 004; provisioning and text reception still work with the older server.
 
-## Current OTA release (2026-09-21)
+## Current OTA release 0.4.2 (2026-09-21)
+
+Published `0.4.2`, sequence `2`, size `2,211,520` bytes, SHA256 `5b058a123415b71497388440408ff6171d7bb8fc0e9da17080add4cf099b7a6d`, from source commit `b4ab64a`. It adds CW2017 battery percentage, independent text loading animation and input locking during work, retaining 0.4.1 cancellation and paging. Local host checks, both firmware builds and protected-layout checks passed. The user confirmed OTA completion, battery display and loading/input-lock behavior on the device. Gauge accuracy, prolonged charge/discharge and power-loss rollback remain unverified.
+
+Before server verification/publication, the consistent online backup `backups/before-ota-0.4.2-20260921T114229Z.db` passed integrity checks. Version 0.4.1 remains stored but unpublished; installation still requires a physical long-Down confirmation.
+
+
+## Previous OTA release 0.4.1 (2026-09-21)
 
 Published `0.4.1`, sequence `1`, application size `2,189,520` bytes, SHA256 `3fbececb6d9f0aacc84ea03c95eae1e7b9e65cc65bb59e58ca9f32b5f15dfb11`, from source commit `7ed5e63`. The complete local host gate, both firmware builds and protected-layout checks passed. Signing used the private key outside the repository; the server verified the package before publication.
 

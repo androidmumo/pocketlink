@@ -27,7 +27,7 @@ Open **[PocketLink](https://pocketlink.mcloc.cn)**. The following records the de
 | Database | `data/relay.db` under that root, plus runtime SQLite WAL files |
 | Administrator password | `secrets/admin_password` under that root |
 | Backups | `backups/` under that root; no scheduled backup currently exists |
-| Application commit | `65438490ebf33c2e2e14a7f0ac34340bbb15069c` |
+| Application commit | `b4ab64ae4e8e4f6029b19011d09d877c3f462ace` |
 | Resource limits | 192 MB memory, 0.5 CPU, 128 processes; non-root, read-only root filesystem |
 
 The image includes the web console; no separate frontend or MySQL deployment is needed.
@@ -35,7 +35,7 @@ SQLite persists in a dedicated directory. HTTPS login/logout, restart session in
 backup recovery and database integrity were verified. Physical device pairing is unverified.
 
 
-Signed OTA management was deployed on 2026-09-20: upload, publish, withdraw and delete firmware packages. OTA `0.4.1` (sequence 1) is now published with provisioning cancellation and message paging. Devices with the initial wired OTA installation can upgrade online; physical acceptance remains pending. See the [OTA guide](docs/development/firmware-ota.en.md). The pre-upgrade backup is `backups/before-ota-20260920T021947Z.tar.gz`.
+Signed OTA management was deployed on 2026-09-20: upload, publish, withdraw and delete firmware packages. OTA `0.4.2` (sequence 2) is now published with battery display, loading feedback and input locking, plus provisioning cancellation and message paging. Devices with the initial wired OTA installation can upgrade online. The user confirmed 0.4.2 installation, battery display and operation feedback; other dedicated acceptance checks remain pending. See the [OTA guide](docs/development/firmware-ota.en.md). The pre-upgrade backup is `backups/before-ota-20260920T021947Z.tar.gz`.
 
 Invite registration, isolated accounts, shared rooms and the redesigned console were deployed on 2026-09-21. Existing data belongs to the administrator; the password file and device credentials are preserved. The pre-upgrade backup is `backups/before-accounts-20260921T060225Z.tar.gz`; reverting to an old image also requires restoring its matching database.
 
@@ -88,7 +88,7 @@ test ! -e /opt/pocketlink
 test ! -e /opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
 git clone https://github.com/androidmumo/pocketlink.git /opt/pocketlink-src
 cd /opt/pocketlink-src
-git checkout 65438490ebf33c2e2e14a7f0ac34340bbb15069c
+git checkout b4ab64ae4e8e4f6029b19011d09d877c3f462ace
 install -d -m 700 /opt/pocketlink
 cp deploy/compose.yaml deploy/compose.auth.yaml /opt/pocketlink/
 base=/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
@@ -106,11 +106,11 @@ PASSWORD
 ```
 
 Write the following to `/opt/pocketlink/.env` and set its permissions to `600`.
-The pinned digest comes from the [successful CI run](https://github.com/androidmumo/pocketlink/actions/runs/35569404072).
+The pinned digest comes from the [successful CI run](https://github.com/androidmumo/pocketlink/actions/runs/35595351475).
 Do not treat the floating `edge` tag as a fixed release.
 
 ```dotenv
-POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:6d4b49389dc2e2334d31518e7dbad19df223c85d399b7231afcdc3555987a480
+POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:5a2e62e4a837d323ae2946f52cf48ba3d393acc36801a0ea8e46ca23dc2c0270
 POCKETLINK_HTTP_PORT=3002
 POCKETLINK_LOG_LEVEL=info
 POCKETLINK_PUBLIC_ORIGIN=https://pocketlink.mcloc.cn
