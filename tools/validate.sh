@@ -27,6 +27,7 @@ static() {
     "${scratch}/test-ota-boot"
     node tests/provisioning/test_portal.cjs
     node tests/ota/test_console.cjs
+    node tests/console/test_sessions.cjs
     (
         cd services/relay
         test -z "$(gofmt -l cmd internal)"

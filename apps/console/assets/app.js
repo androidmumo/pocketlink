@@ -2,6 +2,7 @@
 const $ = id => document.getElementById(id);
 let expiryTimer;
 let currentUser = null;
+let sessionEpoch = 0;
 let authMode = "login";
 let currentView = "overview";
 let deviceRows = [];
@@ -13,6 +14,7 @@ let pendingSend = null;
 let noticeTimer;
 function status(text) { clearTimeout(noticeTimer); $("status").textContent = text; if(text)noticeTimer=setTimeout(()=>{$("status").textContent="";},10000); }
 function loggedIn(yes, identity) {
+  if(yes || currentUser!==null) sessionEpoch++;
   if (identity) currentUser = {...identity.user, role:identity.role};
   if (!yes) { currentUser=null; deviceRows=[]; roomRows=[]; $("invitation-code").textContent=""; $("invitation-result").hidden=true; $("invitation-list").replaceChildren(); }
   if (yes && currentUser) {
@@ -29,8 +31,10 @@ function loggedIn(yes, identity) {
   if (!yes) { $("firmware-form").reset(); $("firmware-list").replaceChildren(); clearTimeout(expiryTimer); $("pair-code").textContent = ""; $("pair-result").hidden = true; $("devices").replaceChildren(); $("room-detail").hidden=true; $("room-select").replaceChildren(); $("message-text").value=""; pendingSend=null; roomEpoch++; }
 }
 async function api(path, method = "GET", data) {
+  const epoch=sessionEpoch;
   const response = await fetch("/api/v1/" + path, {method, credentials:"same-origin", headers: data ? {"Content-Type":"application/json"} : {}, body: data ? JSON.stringify(data) : undefined});
   const result = await response.json();
+  if(epoch!==sessionEpoch)throw Object.assign(new Error("会话已切换"),{stale:true});
   if (!response.ok) {
     if (response.status === 401) loggedIn(false);
     const messages = {401:"登录已失效或凭证不正确，请重新登录。", 403:"没有执行此操作的权限，或页面来源不匹配。", 404:"内容不存在，或你已失去访问权限。", 429:"请求过于频繁，请稍后重试。", 409:"已达到配对或设备数量上限。", 503:"服务暂不可用，请稍后重试。"};
@@ -62,7 +66,7 @@ async function refresh() {
   $("device-count").textContent=String(devices.filter(d=>d.revoked_at===null).length);
   $("room-count").textContent=String(roomRows.filter(r=>r.archived_at===null).length);
 }
-async function perform(button, action) {button.disabled = true; status(""); try {await action();} catch(error) {status(error.message);} finally {button.disabled = false;}}
+async function perform(button, action) {button.disabled = true; status(""); try {await action();} catch(error) {if(!error.stale)status(error.message);} finally {button.disabled = false;}}
 $("login-form").onsubmit = event => {event.preventDefault(); perform(event.submitter, async () => {let identity;try {identity=await api("auth/login", "POST", {username:authMode==="admin"?"admin":$("username").value,password:$("password").value});} finally {$("password").value="";} loggedIn(true,identity); await refresh();});};
 $("pair-form").onsubmit = event => {event.preventDefault(); perform(event.submitter, async () => {const pair = await api("pairings", "POST", {name:$("device-name").value}); clearTimeout(expiryTimer); $("pair-result").hidden=false; $("pair-code").textContent=pair.code; $("pair-expiry").textContent="到期时间："+new Date(pair.expires_at*1000).toLocaleTimeString(); expiryTimer=setTimeout(()=>{$("pair-code").textContent="配对码已过期，请重新生成。";},Math.max(0,pair.expires_at*1000-Date.now()));});};
 $("logout").onclick = () => perform($("logout"), async () => {await api("auth/logout", "POST"); loggedIn(false);});
@@ -146,17 +150,19 @@ async function refreshFirmware() {
 $("firmware-form").onsubmit=event=>{event.preventDefault();perform(event.submitter,async()=>{
   const manifest=$("firmware-manifest").files[0],image=$("firmware-image").files[0];
   if(!manifest||!image||manifest.size>4096||image.size<288||image.size>3*1024*1024)throw new Error("请选择签名清单和不超过 3 MiB 的应用固件。");
+  const epoch=sessionEpoch;
   const form=new FormData();form.append("manifest",manifest);form.append("image",image);
   $("firmware-manifest").disabled=true;$("firmware-image").disabled=true;
   try {
     const response=await fetch("/api/v1/firmware",{method:"POST",credentials:"same-origin",body:form});
+    if(epoch!==sessionEpoch)return;
     if(response.status===401)loggedIn(false);
     if(!response.ok)throw new Error(response.status===409?"序号必须递增，同一固件不能重复签名上传；请检查已有版本。":response.status===400?"签名、目标设备或固件校验不通过。":response.status===429?"请求过多或存储已满，请稍后重试或删除旧版本。":"上传失败，请确认登录和服务器状态。");
     $("firmware-form").reset();await refreshFirmware();status("升级包已校验并保存，点击发布后设备才能发现更新。");
   } finally {$("firmware-manifest").disabled=false;$("firmware-image").disabled=false;}
 });};
 
-(async()=>{try {const identity=await api("auth/me"); loggedIn(true,identity); await refresh();} catch(error) {loggedIn(false); if (!error.message.startsWith("登录")) status(error.message);}})();
+(async()=>{try {const identity=await api("auth/me"); loggedIn(true,identity); await refresh();} catch(error) {if(error.stale)return; loggedIn(false); if (!error.message.startsWith("登录")) status(error.message);}})();
 
 const viewLabels={overview:["概览","设备相连，消息随行。"],devices:["我的设备","让每一台设备，都有归属。"],rooms:["房间与消息","与朋友共享一个频道。"],invitations:["邀请码","连接，从一份邀请开始。"],firmware:["固件管理","为设备带来新的能力。"]};
 function showView(name){
