@@ -99,10 +99,12 @@ func (a *Auth) messageHTTP(w http.ResponseWriter, r *http.Request) bool {
 	if path != "/api/v1/rooms" && !strings.HasPrefix(path, "/api/v1/rooms/") && !strings.HasPrefix(path, "/api/v1/messages/") {
 		return false
 	}
-	if !a.admin(r) {
+	user, ok := a.principal(r)
+	if !ok {
 		fail(w, 401, "login_required")
 		return true
 	}
+	db := a.db.ForUser(user.ID)
 	if r.Method != "GET" && a.messageLimit() {
 		w.Header().Set("Retry-After", "60")
 		fail(w, 429, "try_later")
@@ -111,8 +113,22 @@ func (a *Auth) messageHTTP(w http.ResponseWriter, r *http.Request) bool {
 	parts := strings.Split(strings.TrimPrefix(path, "/api/v1/"), "/")
 	now := time.Now().Unix()
 	switch {
+	case len(parts) == 3 && parts[0] == "rooms" && parts[2] == "users" && r.Method == "GET":
+		users, e := db.RoomUsers(r.Context(), parts[1])
+		if e != nil {
+			a.messageError(w, e)
+		} else {
+			write(w, 200, map[string]any{"users": users})
+		}
+	case len(parts) == 4 && parts[0] == "rooms" && parts[2] == "users" && r.Method == "DELETE":
+		e := db.RemoveRoomUser(r.Context(), parts[1], parts[3], now)
+		if e != nil {
+			a.messageError(w, e)
+		} else {
+			write(w, 200, map[string]bool{"removed": true})
+		}
 	case path == "/api/v1/rooms" && r.Method == "GET":
-		rooms, e := a.db.Rooms(r.Context())
+		rooms, e := db.Rooms(r.Context())
 		if e != nil {
 			a.messageError(w, e)
 		} else {
@@ -127,26 +143,26 @@ func (a *Auth) messageHTTP(w http.ResponseWriter, r *http.Request) bool {
 		}
 		v.Name = strings.TrimSpace(v.Name)
 		id := recordID()
-		if e := a.db.CreateRoom(r.Context(), id, v.Name, now); e != nil {
+		if e := db.CreateRoom(r.Context(), id, v.Name, now); e != nil {
 			a.messageError(w, e)
 		} else {
 			write(w, 201, store.Room{ID: id, Name: v.Name, CreatedAt: now})
 		}
 	case len(parts) == 2 && parts[0] == "rooms" && r.Method == "DELETE":
-		if e := a.db.ArchiveRoom(r.Context(), parts[1], now); e != nil {
+		if e := db.ArchiveRoom(r.Context(), parts[1], now); e != nil {
 			a.messageError(w, e)
 		} else {
 			write(w, 200, map[string]bool{"archived": true})
 		}
 	case len(parts) == 3 && parts[0] == "rooms" && parts[2] == "members" && r.Method == "GET":
-		ids, e := a.db.Members(r.Context(), parts[1])
+		ids, e := db.Members(r.Context(), parts[1])
 		if e != nil {
 			a.messageError(w, e)
 		} else {
 			write(w, 200, map[string]any{"device_ids": ids})
 		}
 	case len(parts) == 4 && parts[0] == "rooms" && parts[2] == "members" && (r.Method == "PUT" || r.Method == "DELETE"):
-		if e := a.db.SetMember(r.Context(), parts[1], parts[3], r.Method == "PUT", now); e != nil {
+		if e := db.SetMember(r.Context(), parts[1], parts[3], r.Method == "PUT", now); e != nil {
 			a.messageError(w, e)
 		} else {
 			write(w, 200, map[string]bool{"updated": true})
@@ -163,7 +179,7 @@ func (a *Auth) messageHTTP(w http.ResponseWriter, r *http.Request) bool {
 			fail(w, 400, "invalid_request")
 			break
 		}
-		m, e := a.db.SendText(r.Context(), parts[1], v.RequestID, v.Text, now)
+		m, e := db.SendText(r.Context(), parts[1], v.RequestID, v.Text, now)
 		if e != nil {
 			a.messageError(w, e)
 		} else {
@@ -179,7 +195,7 @@ func (a *Auth) messageHTTP(w http.ResponseWriter, r *http.Request) bool {
 				break
 			}
 		}
-		ms, e := a.db.History(r.Context(), parts[1], before)
+		ms, e := db.History(r.Context(), parts[1], before)
 		if e != nil {
 			a.messageError(w, e)
 		} else {
@@ -195,7 +211,7 @@ func (a *Auth) messageHTTP(w http.ResponseWriter, r *http.Request) bool {
 			fail(w, 400, "invalid_message")
 			break
 		}
-		rs, e := a.db.MessageReceipts(r.Context(), id)
+		rs, e := db.MessageReceipts(r.Context(), id)
 		if e != nil {
 			a.messageError(w, e)
 		} else {

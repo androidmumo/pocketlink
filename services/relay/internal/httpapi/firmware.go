@@ -65,8 +65,13 @@ func (a *Auth) firmwareHTTP(w http.ResponseWriter, r *http.Request) bool {
 	if path != "/api/v1/firmware" && !strings.HasPrefix(path, "/api/v1/firmware/") {
 		return false
 	}
-	if !a.admin(r) {
+	user, ok := a.principal(r)
+	if !ok {
 		fail(w, 401, "login_required")
+		return true
+	}
+	if user.ID != "admin" {
+		fail(w, 403, "admin_required")
 		return true
 	}
 	switch {

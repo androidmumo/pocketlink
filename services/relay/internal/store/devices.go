@@ -13,6 +13,7 @@ type Device struct {
 	ID        string `json:"id"`
 	SN        string `json:"sn"`
 	Name      string `json:"name"`
+	OwnerID   string `json:"owner_id"`
 	CreatedAt int64  `json:"created_at"`
 	RevokedAt *int64 `json:"revoked_at"`
 }
@@ -34,7 +35,7 @@ func (s *Store) CreatePairing(ctx context.Context, hash, name string, now int64)
 	if count >= 32 {
 		return ErrLimit
 	}
-	if _, err = tx.ExecContext(ctx, "INSERT INTO pairings(code_hash,name,expires_at) VALUES(?,?,?)", hash, name, now+600); err != nil {
+	if _, err = tx.ExecContext(ctx, "INSERT INTO pairings(code_hash,name,expires_at,owner_id) VALUES(?,?,?,?)", hash, name, now+600, s.actorID()); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -48,14 +49,14 @@ func (s *Store) ConsumePairing(ctx context.Context, codeHash, id, sn, credential
 		return err
 	}
 	defer tx.Rollback()
-	var name string
-	if err = tx.QueryRowContext(ctx, "SELECT name FROM pairings WHERE code_hash=? AND expires_at>?", codeHash, now).Scan(&name); errors.Is(err, sql.ErrNoRows) {
+	var name, owner string
+	if err = tx.QueryRowContext(ctx, "SELECT name,owner_id FROM pairings WHERE code_hash=? AND expires_at>?", codeHash, now).Scan(&name, &owner); errors.Is(err, sql.ErrNoRows) {
 		return ErrDenied
 	} else if err != nil {
 		return err
 	}
 	var count int
-	if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM devices WHERE sn=? AND revoked_at IS NULL", sn).Scan(&count); err != nil {
+	if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM devices WHERE sn=? AND (revoked_at IS NULL OR owner_id<>?)", sn, owner).Scan(&count); err != nil {
 		return err
 	}
 	if count != 0 {
@@ -75,8 +76,8 @@ func (s *Store) ConsumePairing(ctx context.Context, codeHash, id, sn, credential
 		return ErrLimit
 	}
 	// Re-pairing retains the device identity but invalidates the old credential.
-	_, err = tx.ExecContext(ctx, `INSERT INTO devices(id,sn,name,credential_hash,created_at) VALUES(?,?,?,?,?)
- ON CONFLICT(sn) DO UPDATE SET name=excluded.name,credential_hash=excluded.credential_hash,created_at=excluded.created_at,revoked_at=NULL`, id, sn, name, credentialHash, now)
+	_, err = tx.ExecContext(ctx, `INSERT INTO devices(id,sn,name,credential_hash,created_at,owner_id) VALUES(?,?,?,?,?,?)
+ ON CONFLICT(sn) DO UPDATE SET name=excluded.name,credential_hash=excluded.credential_hash,created_at=excluded.created_at,revoked_at=NULL`, id, sn, name, credentialHash, now, owner)
 	if err != nil {
 		return err
 	}
@@ -87,14 +88,14 @@ func (s *Store) ConsumePairing(ctx context.Context, codeHash, id, sn, credential
 }
 func (s *Store) DeviceByCredential(ctx context.Context, hash string) (Device, error) {
 	var d Device
-	err := s.db.QueryRowContext(ctx, "SELECT id,sn,name,created_at,revoked_at FROM devices WHERE credential_hash=? AND revoked_at IS NULL", hash).Scan(&d.ID, &d.SN, &d.Name, &d.CreatedAt, &d.RevokedAt)
+	err := s.db.QueryRowContext(ctx, "SELECT id,sn,name,owner_id,created_at,revoked_at FROM devices WHERE credential_hash=? AND revoked_at IS NULL", hash).Scan(&d.ID, &d.SN, &d.Name, &d.OwnerID, &d.CreatedAt, &d.RevokedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return d, ErrDenied
 	}
 	return d, err
 }
 func (s *Store) Devices(ctx context.Context) ([]Device, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id,sn,name,created_at,revoked_at FROM devices ORDER BY created_at DESC,id LIMIT 1024")
+	rows, err := s.db.QueryContext(ctx, "SELECT id,sn,name,owner_id,created_at,revoked_at FROM devices WHERE owner_id=? OR ?='admin' ORDER BY created_at DESC,id LIMIT 1024", s.actorID(), s.actorID())
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +103,7 @@ func (s *Store) Devices(ctx context.Context) ([]Device, error) {
 	result := []Device{}
 	for rows.Next() {
 		var d Device
-		if err = rows.Scan(&d.ID, &d.SN, &d.Name, &d.CreatedAt, &d.RevokedAt); err != nil {
+		if err = rows.Scan(&d.ID, &d.SN, &d.Name, &d.OwnerID, &d.CreatedAt, &d.RevokedAt); err != nil {
 			return nil, err
 		}
 		result = append(result, d)
@@ -115,7 +116,7 @@ func (s *Store) RevokeDevice(ctx context.Context, id string, now int64) error {
 		return e
 	}
 	defer tx.Rollback()
-	result, e := tx.ExecContext(ctx, "UPDATE devices SET revoked_at=COALESCE(revoked_at,?) WHERE id=?", now, id)
+	result, e := tx.ExecContext(ctx, "UPDATE devices SET revoked_at=COALESCE(revoked_at,?) WHERE id=? AND (owner_id=? OR ?='admin')", now, id, s.actorID(), s.actorID())
 	if e != nil {
 		return e
 	}

@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Add administrator-issued registration invites, isolated device ownership and room invitation/leave/removal. Migrate existing data to the administrator and redesign the responsive console with role-specific navigation, senders and invite management.
+
 - Fix provisioning access rejection on dual-stack HTTP sockets by recognizing IPv4-mapped addresses and explicit default port 80, while retaining hotspot-interface, Host, Origin and token checks.
 
 - Fix missing Chinese glyphs on the provisioning screen with complete UI text and common GB2312 Han coverage, checked by host tests.

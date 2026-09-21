@@ -5,7 +5,7 @@
 One repository for connected pocket-device firmware, relay services and a web console,
 with future expansion into multiplayer games and other applications.
 
-**Current release: P2 trial with device management, room permissions, text sending, offline delivery and per-device receipts.**
+**The console now supports invite registration, isolated user accounts, shared rooms and a responsive workspace.** See [accounts and invitations](docs/development/accounts.en.md).
 A new **P3 device development build** implements QR hotspot provisioning, HTTPS pairing
 text reception and signed OTA, pending physical-device acceptance. Voice is not implemented.
 Use `pocketlink` firmware for device features; `board-check` remains hardware diagnostics.
@@ -40,7 +40,7 @@ Signed OTA management was deployed on 2026-09-20: upload, publish, withdraw and 
 ## Using the console
 
 1. In **1Panel → Files**, open the full server path of `secrets/admin_password` above and copy the password.
-   There is one administrator, with no username, registration or default password. Never commit the password or post it publicly.
+   Select Administrator to use this file-configured password. Regular users register with administrator-issued invitations and sign in with a username and password. There is no default password. Never commit the password or post it publicly.
 2. Open the console over HTTPS and log in. Sessions last up to 12 hours; restarting the service requires another login.
 3. Enter a device name and generate a pairing code. Names allow 40 characters. Codes expire after 10 minutes and work once.
 4. With the pocketlink development firmware, scan the device hotspot QR and enter Wi-Fi
@@ -54,7 +54,7 @@ Signed OTA management was deployed on 2026-09-20: upload, publish, withdraw and 
 
 SN is an identifier, not a password. Pairing codes and device credentials are random secrets;
 SQLite stores only their digests. Limits: 32 unexpired codes, 256 active devices, 1024 retained
-serials and a shared 20 login/pairing attempts per minute. There is no web password editor,
+serials and a shared 20 login/registration/pairing attempts per minute. There is no web password editor,
 automatic device-token expiry or multi-administrator account system yet.
 
 ### Rooms and text
@@ -239,7 +239,7 @@ disk failure. No automatic backup or cleanup policy is configured; schedule it a
 | Homepage/admin API 404 | Both auth settings are required; otherwise only foundation endpoints are enabled |
 | Origin mismatch / 403 | Use the exact configured HTTPS domain; check slash, port and proxy; do not log in over HTTP/IP |
 | 401 / expired login | Wrong password, 12-hour expiry, logout or restart; revoked device credentials also return 401 |
-| 429 | Wait about a minute for the shared rate limit; the 32-session cap may require logging out older sessions or waiting for expiry |
+| 429 | Wait about a minute for the shared rate limit; the 256-session total or 16-session per-account cap may require logging out older sessions or waiting for expiry |
 | 409 | Check code/device/retained-serial limits; expired codes are pruned when creating another code |
 | Cannot read password/database | Check UID/GID, permissions and mounts; do not open the whole site's permissions |
 | Expired/used pairing code | Generate another; revoke first if the device exists but its response was lost |

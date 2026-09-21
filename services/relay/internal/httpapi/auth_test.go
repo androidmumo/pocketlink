@@ -168,7 +168,9 @@ func TestConcurrentPairingAndExpiry(t *testing.T) {
 		t.Fatal("expired code accepted")
 	}
 	a.auth.mu.Lock()
-	a.auth.sessions[digest(c.Value)] = time.Now().Add(-time.Second)
+	expiredSession := a.auth.sessions[digest(c.Value)]
+	expiredSession.Expires = time.Now().Add(-time.Second)
+	a.auth.sessions[digest(c.Value)] = expiredSession
 	a.auth.mu.Unlock()
 	if request(t, a, "GET", "/api/v1/devices", "", "", c, "").Code != 401 {
 		t.Fatal("expired session accepted")

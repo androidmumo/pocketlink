@@ -65,3 +65,7 @@ main 生成 `edge` 及提交标签；relay 标签生成对应版本和提交标�
 配网开发固件使用教程见[设备配网](device-provisioning.md)。
 
 签名 OTA 源码及使用教程（真机验收待完成）：[OTA](firmware-ota.md)
+
+## 浏览器验收
+
+`tests/console/browser.cjs` 使用 Playwright 1.58.2 与独立无账号 Chrome。仅接受回环 HTTPS 测试服务，必须配套临时数据库和测试管理员密码文件；不要指向生产服务。通过 `POCKETLINK_PLAYWRIGHT` 指定 Playwright 模块路径，`POCKETLINK_TEST_PASSWORD_FILE` 指定测试密码文件，`POCKETLINK_TEST_ORIGIN` 指定回环 HTTPS 地址，`POCKETLINK_SCREENSHOTS` 指定已存在的截图目录。运行 `node tests/console/browser.cjs`，覆盖邀请注册、登录、配对、消息回执与手机布局。普通 `--static` 不要求安装浏览器。

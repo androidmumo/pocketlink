@@ -22,10 +22,12 @@ func ValidName(s string) bool {
 type Room struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
+	OwnerID    string `json:"owner_id"`
 	CreatedAt  int64  `json:"created_at"`
 	ArchivedAt *int64 `json:"archived_at"`
 }
 type Message struct {
+	Sender    string `json:"sender"`
 	ID        int64  `json:"id"`
 	RoomID    string `json:"room_id"`
 	RequestID string `json:"request_id"`
@@ -56,13 +58,13 @@ func (s *Store) CreateRoom(ctx context.Context, id, name string, now int64) erro
 	if count >= 64 {
 		return ErrLimit
 	}
-	if _, e = tx.ExecContext(ctx, "INSERT INTO rooms(id,name,created_at) VALUES(?,?,?)", id, name, now); e != nil {
+	if _, e = tx.ExecContext(ctx, "INSERT INTO rooms(id,name,created_at,owner_id) VALUES(?,?,?,?)", id, name, now, s.actorID()); e != nil {
 		return e
 	}
 	return tx.Commit()
 }
 func (s *Store) Rooms(ctx context.Context) ([]Room, error) {
-	rows, e := s.db.QueryContext(ctx, "SELECT id,name,created_at,archived_at FROM rooms ORDER BY created_at,id")
+	rows, e := s.db.QueryContext(ctx, "SELECT id,name,owner_id,created_at,archived_at FROM rooms r WHERE owner_id=? OR ?='admin' OR EXISTS(SELECT 1 FROM room_users u WHERE u.room_id=r.id AND u.user_id=?) ORDER BY created_at,id", s.actorID(), s.actorID(), s.actorID())
 	if e != nil {
 		return nil, e
 	}
@@ -70,7 +72,7 @@ func (s *Store) Rooms(ctx context.Context) ([]Room, error) {
 	result := []Room{}
 	for rows.Next() {
 		var v Room
-		if e = rows.Scan(&v.ID, &v.Name, &v.CreatedAt, &v.ArchivedAt); e != nil {
+		if e = rows.Scan(&v.ID, &v.Name, &v.OwnerID, &v.CreatedAt, &v.ArchivedAt); e != nil {
 			return nil, e
 		}
 		result = append(result, v)
@@ -83,6 +85,9 @@ func (s *Store) ArchiveRoom(ctx context.Context, id string, now int64) error {
 		return e
 	}
 	defer tx.Rollback()
+	if e = s.roomAllowed(ctx, tx, id, true); e != nil {
+		return e
+	}
 	result, e := tx.ExecContext(ctx, "UPDATE rooms SET archived_at=COALESCE(archived_at,?) WHERE id=?", now, id)
 	if e != nil {
 		return e
@@ -105,6 +110,16 @@ func (s *Store) SetMember(ctx context.Context, room, device string, add bool, no
 		return e
 	}
 	defer tx.Rollback()
+	if e = s.roomAllowed(ctx, tx, room, false); e != nil {
+		return e
+	}
+	var allowed int
+	if e = tx.QueryRowContext(ctx, `SELECT count(*) FROM devices d WHERE id=? AND (owner_id=? OR ?='admin' OR (?=0 AND EXISTS(SELECT 1 FROM rooms WHERE id=? AND owner_id=?)))`, device, s.actorID(), s.actorID(), add, room, s.actorID()).Scan(&allowed); e != nil {
+		return e
+	}
+	if allowed == 0 {
+		return ErrNotFound
+	}
 	var count int
 	if e = tx.QueryRowContext(ctx, "SELECT count(*) FROM rooms WHERE id=? AND archived_at IS NULL", room).Scan(&count); e != nil {
 		return e
@@ -132,6 +147,10 @@ func (s *Store) SetMember(ctx context.Context, room, device string, add bool, no
 	return tx.Commit()
 }
 func (s *Store) Members(ctx context.Context, room string) ([]string, error) {
+	if e := s.roomAllowed(ctx, s.db, room, false); e != nil {
+		return nil, e
+	}
+
 	rows, e := s.db.QueryContext(ctx, "SELECT device_id FROM room_members WHERE room_id=? ORDER BY device_id", room)
 	if e != nil {
 		return nil, e
@@ -160,8 +179,18 @@ func (s *Store) SendText(ctx context.Context, room, key, text string, now int64)
 		return m, e
 	}
 	defer tx.Rollback()
-	e = tx.QueryRowContext(ctx, "SELECT id,room_id,request_id,body,created_at FROM messages WHERE room_id=? AND request_id=?", room, key).Scan(&m.ID, &m.RoomID, &m.RequestID, &m.Text, &m.CreatedAt)
+	if e = s.roomAllowed(ctx, tx, room, false); e != nil {
+		return m, e
+	}
+	e = tx.QueryRowContext(ctx, "SELECT id,room_id,request_id,body,created_at,sender_name FROM messages WHERE room_id=? AND request_id=?", room, key).Scan(&m.ID, &m.RoomID, &m.RequestID, &m.Text, &m.CreatedAt, &m.Sender)
 	if e == nil {
+		var visible int
+		if e = tx.QueryRowContext(ctx, `SELECT count(*) FROM rooms r WHERE id=? AND (?='admin' OR owner_id=? OR EXISTS(SELECT 1 FROM room_users u WHERE u.room_id=r.id AND u.user_id=? AND ?>u.since_message_id))`, room, s.actorID(), s.actorID(), s.actorID(), m.ID).Scan(&visible); e != nil {
+			return Message{}, e
+		}
+		if visible == 0 {
+			return Message{}, ErrNotFound
+		}
 		if m.Text != text {
 			return Message{}, ErrConflict
 		}
@@ -189,7 +218,11 @@ func (s *Store) SendText(ctx context.Context, room, key, text string, now int64)
 	if count == 0 {
 		return m, ErrEmptyRoom
 	}
-	result, e := tx.ExecContext(ctx, "INSERT INTO messages(room_id,request_id,body,created_at) VALUES(?,?,?,?)", room, key, text, now)
+	var sender string
+	if e = tx.QueryRowContext(ctx, "SELECT username FROM users WHERE id=?", s.actorID()).Scan(&sender); e != nil {
+		return m, e
+	}
+	result, e := tx.ExecContext(ctx, "INSERT INTO messages(room_id,request_id,body,created_at,sender_name) VALUES(?,?,?,?,?)", room, key, text, now, sender)
 	if e != nil {
 		return m, e
 	}
@@ -203,14 +236,14 @@ func (s *Store) SendText(ctx context.Context, room, key, text string, now int64)
 	if e = tx.Commit(); e != nil {
 		return m, e
 	}
-	return Message{id, room, key, text, now}, nil
+	return Message{ID: id, RoomID: room, RequestID: key, Text: text, CreatedAt: now, Sender: sender}, nil
 }
 func scanMessages(rows *sql.Rows) ([]Message, error) {
 	defer rows.Close()
 	out := []Message{}
 	for rows.Next() {
 		var m Message
-		if e := rows.Scan(&m.ID, &m.RoomID, &m.RequestID, &m.Text, &m.CreatedAt); e != nil {
+		if e := rows.Scan(&m.ID, &m.RoomID, &m.RequestID, &m.Text, &m.CreatedAt, &m.Sender); e != nil {
 			return nil, e
 		}
 		out = append(out, m)
@@ -218,16 +251,28 @@ func scanMessages(rows *sql.Rows) ([]Message, error) {
 	return out, rows.Err()
 }
 func (s *Store) History(ctx context.Context, room string, before int64) ([]Message, error) {
+	if e := s.roomAllowed(ctx, s.db, room, false); e != nil {
+		return nil, e
+	}
+
 	if before == 0 {
 		before = 1<<63 - 1
 	}
-	rows, e := s.db.QueryContext(ctx, "SELECT id,room_id,request_id,body,created_at FROM messages WHERE room_id=? AND id<? ORDER BY id DESC LIMIT 20", room, before)
+	rows, e := s.db.QueryContext(ctx, "SELECT id,room_id,request_id,body,created_at,sender_name FROM messages m WHERE room_id=? AND id<? AND (?='admin' OR EXISTS(SELECT 1 FROM rooms WHERE id=m.room_id AND owner_id=?) OR EXISTS(SELECT 1 FROM room_users WHERE room_id=m.room_id AND user_id=? AND m.id>since_message_id)) ORDER BY id DESC LIMIT 20", room, before, s.actorID(), s.actorID(), s.actorID())
 	if e != nil {
 		return nil, e
 	}
 	return scanMessages(rows)
 }
 func (s *Store) MessageReceipts(ctx context.Context, id int64) ([]Receipt, error) {
+	var allowed int
+	if e := s.db.QueryRowContext(ctx, `SELECT count(*) FROM messages m JOIN rooms r ON r.id=m.room_id WHERE m.id=? AND (?='admin' OR r.owner_id=? OR EXISTS(SELECT 1 FROM room_users u WHERE u.room_id=r.id AND u.user_id=? AND m.id>u.since_message_id))`, id, s.actorID(), s.actorID(), s.actorID()).Scan(&allowed); e != nil {
+		return nil, e
+	}
+	if allowed == 0 {
+		return nil, ErrNotFound
+	}
+
 	rows, e := s.db.QueryContext(ctx, "SELECT r.device_id,d.name,r.delivered_at,r.read_at,r.withdrawn_at FROM receipts r JOIN devices d ON d.id=r.device_id WHERE r.message_id=? ORDER BY d.id", id)
 	if e != nil {
 		return nil, e
@@ -247,7 +292,7 @@ func (s *Store) MessageReceipts(ctx context.Context, id int64) ([]Receipt, error
 // Authenticate within each database operation; cached socket identity is never
 // sufficient after revocation/re-pairing. Device cursors cannot skip unacked rows.
 func (s *Store) Pending(ctx context.Context, hash string) ([]Message, error) {
-	rows, e := s.db.QueryContext(ctx, `SELECT m.id,m.room_id,m.request_id,m.body,m.created_at FROM messages m
+	rows, e := s.db.QueryContext(ctx, `SELECT m.id,m.room_id,m.request_id,m.body,m.created_at,m.sender_name FROM messages m
  JOIN receipts r ON r.message_id=m.id JOIN devices d ON d.id=r.device_id
  JOIN rooms room ON room.id=m.room_id JOIN room_members rm ON rm.room_id=m.room_id AND rm.device_id=d.id
  WHERE d.credential_hash=? AND d.revoked_at IS NULL AND room.archived_at IS NULL AND r.withdrawn_at IS NULL AND r.delivered_at IS NULL

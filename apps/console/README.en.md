@@ -16,3 +16,5 @@ See [authentication](../../docs/development/authentication.en.md) for setup and 
 Rooms, membership, text composition, paginated history and per-device receipts are implemented. Audio remains pending. The pairing
 code must later be transferred through the device configuration flow, not typed with
 three device buttons. No pairing firmware is included in this increment.
+
+The responsive workspace includes overview, devices, rooms/messages, invitations and administrator-only firmware management. See [accounts and invitations](../../docs/development/accounts.en.md).

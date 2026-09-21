@@ -2,7 +2,9 @@
 
 # Device authentication increment (P2a)
 
-P0/P1 artifacts have passed CI. P2a adds a single administrator and independent device
+Accounts now include the file-configured administrator and invite-registered users. See [accounts and invitations](accounts.en.md) for permissions, shared rooms and new APIs. User password hashes are stored separately in the database.
+
+P0/P1 artifacts have passed CI. P2a originally introduced a single administrator and independent device
 credentials; the later P2 increment implements rooms, text, receipts and WebSocket sessions; see [messaging](messaging.en.md).
 The board-check image is unchanged. A trial is deployed; see the [README](../../README.en.md).
 
@@ -46,17 +48,17 @@ Errors contain stable generic codes, never SQL details or credential values.
 | Method/path | Credential | Request/result |
 | --- | --- | --- |
 | `POST /api/v1/auth/login` | Password + exact Origin | `{password}`; sets session cookie |
-| `GET /api/v1/auth/me` | Admin cookie | Login state |
-| `POST /api/v1/auth/logout` | Admin cookie + Origin | Invalidates current session |
-| `POST /api/v1/pairings` | Admin cookie + Origin | `{name}`; returns `{code, expires_at}` |
-| `GET /api/v1/devices` | Admin cookie | `{devices}` including revoked status; no hashes/secrets |
-| `DELETE /api/v1/devices/{id}` | Admin cookie + Origin | Immediately revokes credential; idempotent for known ID |
+| `GET /api/v1/auth/me` | Account cookie | Login state |
+| `POST /api/v1/auth/logout` | Account cookie + Origin | Invalidates current session |
+| `POST /api/v1/pairings` | Account cookie + Origin | `{name}`; returns `{code, expires_at}` |
+| `GET /api/v1/devices` | Account cookie | `{devices}` including revoked status; no hashes/secrets |
+| `DELETE /api/v1/devices/{id}` | Account cookie + Origin | Immediately revokes credential; idempotent for known ID |
 | `POST /api/v1/device/pair` | One-time code; no browser Origin | `{code, sn}`; returns `{device, credential}` once |
 | `GET /api/v1/device/me` | `Authorization: Bearer <credential>` | Current active device identity |
 
 An administrator session cannot authorize a device endpoint; a device token cannot
 administer devices. Session cookies are Secure, HttpOnly, SameSite=Strict and host-only,
-with a 12-hour lifetime. At most 32 sessions are retained in memory; restart logs them out.
+with a 12-hour lifetime. At most 256 sessions are retained in memory, with 16 per account; restart logs them out.
 PBKDF2-HMAC-SHA256 uses a random startup salt and 600,000 iterations. Password verification
 is limited to one concurrent operation. Login and device pairing share a global limit
 of 20 attempts/minute, independent of spoofable proxy/client-IP headers. This deliberately

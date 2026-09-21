@@ -2,7 +2,9 @@
 
 # 设备鉴权增量（P2a）
 
-P0/P1 产物已通过 CI。P2a 增加单管理员和独立设备凭证，P2 房间、文字、回执和 WebSocket 已在后续增量实现，见[文字协议](messaging.md)。board-check 固件不变。体验环境已部署，详见 [README](../../README.md)。
+账号体系已扩展为管理员加邀请码注册用户，权限、共享房间和新增 API 见[账号与邀请](accounts.md)。管理员继续使用本页密码文件；用户密码独立保存在数据库。
+
+P0/P1 产物已通过 CI。P2a 最初增加单管理员和独立设备凭证，现已扩展邀请码账号体系，P2 房间、文字、回执和 WebSocket 已在后续增量实现，见[文字协议](messaging.md)。board-check 固件不变。体验环境已部署，详见 [README](../../README.md)。
 
 ## 配置
 
@@ -38,16 +40,16 @@ JSON 请求需要 `Content-Type: application/json`，请求体最多 4096 字节
 | 方法/路径 | 凭证 | 请求/结果 |
 | --- | --- | --- |
 | `POST /api/v1/auth/login` | 密码与精确 Origin | `{password}`，设置会话 Cookie |
-| `GET /api/v1/auth/me` | 管理 Cookie | 登录状态 |
-| `POST /api/v1/auth/logout` | 管理 Cookie 与 Origin | 注销当前会话 |
-| `POST /api/v1/pairings` | 管理 Cookie 与 Origin | `{name}`，返回 `{code, expires_at}` |
-| `GET /api/v1/devices` | 管理 Cookie | `{devices}`，包含撤销状态，不含密钥或摘要 |
-| `DELETE /api/v1/devices/{id}` | 管理 Cookie 与 Origin | 立即撤销；对已知 ID 可重复调用 |
+| `GET /api/v1/auth/me` | 账号 Cookie | 登录状态 |
+| `POST /api/v1/auth/logout` | 账号 Cookie 与 Origin | 注销当前会话 |
+| `POST /api/v1/pairings` | 账号 Cookie 与 Origin | `{name}`，返回 `{code, expires_at}` |
+| `GET /api/v1/devices` | 账号 Cookie | `{devices}`，包含撤销状态，不含密钥或摘要 |
+| `DELETE /api/v1/devices/{id}` | 账号 Cookie 与 Origin | 立即撤销；对已知 ID 可重复调用 |
 | `POST /api/v1/device/pair` | 一次性码，无浏览器 Origin | `{code, sn}`，仅当次返回 `{device, credential}` |
 | `GET /api/v1/device/me` | `Authorization: Bearer <credential>` | 当前有效的设备身份 |
 
-管理 Cookie 不能作为设备凭证，设备密钥不能执行管理操作。Cookie 为 Secure、HttpOnly、
-SameSite=Strict 且只对当前主机有效，12 小时过期。内存中最多保留 32 个会话，重启后需重新登录。
+账号 Cookie 不能作为设备凭证，设备密钥不能执行管理操作。Cookie 为 Secure、HttpOnly、
+SameSite=Strict 且只对当前主机有效，12 小时过期。内存中最多保留 256 个会话，单账号最多 16 个，重启后需重新登录。
 密码校验使用随机启动盐和 600,000 次 PBKDF2-HMAC-SHA256，最多同时执行一次。
 登录与设备配对共用每分钟 20 次的全局限额，不依赖可伪造的代理/IP 请求头。该方案针对小型私有服务，
 攻击者可能暂时耗尽共享配额。

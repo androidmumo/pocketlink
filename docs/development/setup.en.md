@@ -73,3 +73,7 @@ artifacts. Host checks include configuration, inbox state and phone-page logic.
 See [device provisioning](device-provisioning.en.md).
 
 Signed OTA source and usage (device acceptance pending): [OTA](firmware-ota.en.md)
+
+## Browser acceptance
+
+`tests/console/browser.cjs` uses Playwright 1.58.2 and an isolated, signed-out Chrome. It accepts only loopback HTTPS with a disposable database and test administrator password file; never target production. Set `POCKETLINK_PLAYWRIGHT` to the module path, `POCKETLINK_TEST_PASSWORD_FILE` to the test password file, `POCKETLINK_TEST_ORIGIN` to the loopback HTTPS origin and `POCKETLINK_SCREENSHOTS` to an existing output directory. Run `node tests/console/browser.cjs` for invitation registration, login, pairing, message receipts and mobile layout. Ordinary `--static` does not require a browser.

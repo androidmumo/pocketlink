@@ -4,7 +4,6 @@ import (
 	"crypto/pbkdf2"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -31,7 +30,7 @@ type Auth struct {
 	origin             string
 	salt, passwordHash []byte
 	mu                 sync.Mutex
-	sessions           map[string]time.Time
+	sessions           map[string]session
 	window             time.Time
 	attempts           int
 	verifying          chan struct{}
@@ -41,7 +40,7 @@ type Auth struct {
 	stopping           bool
 }
 
-// A single configured administrator is intentional for the private v1 server.
+// The bootstrap administrator retains its file-configured password.
 // Sessions are bounded, memory-only and invalidated on restart/password rotation.
 func NewAuth(db *store.Store, origin, password string) (*Auth, error) {
 	if len(password) < 16 || len(password) > 256 {
@@ -55,7 +54,7 @@ func NewAuth(db *store.Store, origin, password string) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Auth{db: db, origin: origin, salt: salt, passwordHash: hash, sessions: map[string]time.Time{}, verifying: make(chan struct{}, 1), streams: map[string]*streamSession{}}, nil
+	return &Auth{db: db, origin: origin, salt: salt, passwordHash: hash, sessions: map[string]session{}, verifying: make(chan struct{}, 1), streams: map[string]*streamSession{}}, nil
 }
 func secret() string {
 	b := make([]byte, 32)
@@ -103,22 +102,7 @@ func (a *Auth) limited() bool {
 	a.attempts++
 	return false
 }
-func (a *Auth) admin(r *http.Request) bool {
-	c, err := r.Cookie(sessionCookie)
-	if err != nil || !validSecret(c.Value) {
-		return false
-	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	now := time.Now()
-	for h, expiry := range a.sessions {
-		if !now.Before(expiry) {
-			delete(a.sessions, h)
-		}
-	}
-	expiry, ok := a.sessions[digest(c.Value)]
-	return ok && now.Before(expiry)
-}
+func (a *Auth) admin(r *http.Request) bool { u, ok := a.principal(r); return ok && u.ID == "admin" }
 func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -133,54 +117,10 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, 403, "device_endpoint")
 		return
 	}
-	if a.firmwareHTTP(w, r) || a.messageHTTP(w, r) {
+	if a.accountHTTP(w, r) || a.firmwareHTTP(w, r) || a.messageHTTP(w, r) {
 		return
 	}
 	switch {
-	case r.URL.Path == "/api/v1/auth/login" && r.Method == "POST":
-		if a.limited() {
-			w.Header().Set("Retry-After", "60")
-			fail(w, 429, "try_later")
-			return
-		}
-		var req struct {
-			Password string `json:"password"`
-		}
-		if !body(w, r, &req) {
-			return
-		}
-		if len(req.Password) > 256 {
-			fail(w, 401, "invalid_credentials")
-			return
-		}
-		select {
-		case a.verifying <- struct{}{}:
-			defer func() { <-a.verifying }()
-		default:
-			fail(w, 429, "try_later")
-			return
-		}
-		h, err := pbkdf2.Key(sha256.New, req.Password, a.salt, iterations, 32)
-		if err != nil || subtle.ConstantTimeCompare(h, a.passwordHash) != 1 {
-			fail(w, 401, "invalid_credentials")
-			return
-		}
-		token := secret()
-		a.mu.Lock()
-		for h, e := range a.sessions {
-			if !time.Now().Before(e) {
-				delete(a.sessions, h)
-			}
-		}
-		if len(a.sessions) >= 32 {
-			a.mu.Unlock()
-			fail(w, 429, "session_limit")
-			return
-		}
-		a.sessions[digest(token)] = time.Now().Add(12 * time.Hour)
-		a.mu.Unlock()
-		http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: token, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: 43200})
-		write(w, 200, map[string]bool{"authenticated": true})
 	case r.URL.Path == "/api/v1/device/pair" && r.Method == "POST":
 		if a.limited() {
 			w.Header().Set("Retry-After", "60")
@@ -222,13 +162,15 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		write(w, 200, d)
 	default:
-		if !a.admin(r) {
+		user, ok := a.principal(r)
+		if !ok {
 			fail(w, 401, "login_required")
 			return
 		}
+		db := a.db.ForUser(user.ID)
 		switch {
 		case r.URL.Path == "/api/v1/auth/me" && r.Method == "GET":
-			write(w, 200, map[string]bool{"authenticated": true})
+			write(w, 200, identity(user))
 		case r.URL.Path == "/api/v1/auth/logout" && r.Method == "POST":
 			c, _ := r.Cookie(sessionCookie)
 			a.mu.Lock()
@@ -237,7 +179,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.SetCookie(w, &http.Cookie{Name: sessionCookie, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: -1})
 			write(w, 200, map[string]bool{"authenticated": false})
 		case r.URL.Path == "/api/v1/devices" && r.Method == "GET":
-			ds, err := a.db.Devices(r.Context())
+			ds, err := db.Devices(r.Context())
 			if err != nil {
 				a.dbError(w, err)
 				return
@@ -257,7 +199,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			code := secret()
 			now := time.Now().Unix()
-			if err := a.db.CreatePairing(r.Context(), digest(code), req.Name, now); err != nil {
+			if err := db.CreatePairing(r.Context(), digest(code), req.Name, now); err != nil {
 				a.dbError(w, err)
 				return
 			}
@@ -268,7 +210,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				fail(w, 400, "invalid_device")
 				return
 			}
-			if err := a.db.RevokeDevice(r.Context(), id, time.Now().Unix()); err != nil {
+			if err := db.RevokeDevice(r.Context(), id, time.Now().Unix()); err != nil {
 				a.dbError(w, err)
 				return
 			}

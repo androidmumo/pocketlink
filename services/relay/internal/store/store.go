@@ -19,7 +19,10 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
-type Store struct{ db *sql.DB }
+type Store struct {
+	db    *sql.DB
+	actor string
+}
 
 func Open(ctx context.Context, path string) (*Store, error) {
 	absolute, err := filepath.Abs(path)
