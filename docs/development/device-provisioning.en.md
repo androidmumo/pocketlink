@@ -155,10 +155,16 @@ Signed OTA source and usage (device acceptance pending): [OTA](firmware-ota.en.m
 
 ## Cancel provisioning and read pages
 
-Long-press OK again to leave provisioning, retain saved settings and reconnect to the saved network. If a phone-submitted connection attempt is running, cancellation is processed when that operation finishes; it does not reopen the hotspot. Up/down now switch fixed text pages without scrolling or animation. Single-page messages do not move; multi-page messages show their page number. Receipt updates preserve the reading position. Verify cancellation after a failed Wi-Fi attempt and short, long, mixed-language and newline-heavy messages on hardware.
+Long-press OK again to leave provisioning, retain saved settings and reconnect to the saved network. Buttons are locked while a phone-submitted connection attempt is running; wait for it to finish, then long-press OK again to exit. Up/down now switch fixed text pages without scrolling or animation. Single-page messages do not move; multi-page messages show their page number. Receipt updates preserve the reading position. Verify cancellation after a failed Wi-Fi attempt and short, long, mixed-language and newline-heavy messages on hardware.
 
 ## Bluetooth compatibility
 
 ESP32-C3 supports BLE, but this firmware does not enable Bluetooth provisioning yet. Android Chrome supports Web Bluetooth from HTTPS pages; common iPhone browsers do not offer equivalent support, so browser Bluetooth cannot be the sole entry point for both platforms. Hotspot provisioning remains available; a shared BLE experience needs a separate BLE-capable app or client. See [Chrome Web Bluetooth](https://developer.chrome.com/docs/capabilities/bluetooth).
 
 A future logged-in client can generate and transfer a single-use binding credential automatically, removing manual pairing-code entry. Account ownership verification must remain; SN alone must not authorize binding. Existing Wi-Fi-only reconfiguration already permits an empty pairing code while retaining the device binding.
+
+## Battery and operation feedback
+
+The top-right CW2017 fuel-gauge percentage is sampled at startup and approximately every 30 seconds in the idle worker loop; long network tasks can defer sampling. Values at or below 20% are red; failed reads show --%. The driver has no charging-status API, so no charging state is shown.
+
+Startup, network connections, provisioning scans/submissions, read receipts and OTA work display a rotating text indicator. An LVGL timer runs independently of the network worker. Operations lock input before entering the queue and unlock on success or failure. Additional buttons and configuration requests do not accumulate; immediate page turns add no artificial delay. Wait for provisioning work to finish before long-pressing OK to exit. Background reception/reconnection can briefly lock input too. Gauge accuracy, repeated presses and failure recovery await physical acceptance.

@@ -18,3 +18,5 @@ code must later be transferred through the device configuration flow, not typed 
 three device buttons. No pairing firmware is included in this increment.
 
 The responsive workspace includes overview, devices, rooms/messages, invitations and administrator-only firmware management. See [accounts and invitations](../../docs/development/accounts.en.md).
+
+Message history is capped at 420px and half the viewport height. Long histories scroll internally while the composer stays outside. The history region supports keyboard focus for scrolling.

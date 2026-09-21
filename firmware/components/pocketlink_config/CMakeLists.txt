@@ -1,1 +1,1 @@
-idf_component_register(SRCS "pocketlink_config.c" "pocketlink_inbox.c" "pocketlink_dns.c" "pocketlink_portal.c" "pocketlink_pages.c" INCLUDE_DIRS ".")
+idf_component_register(SRCS "pocketlink_config.c" "pocketlink_inbox.c" "pocketlink_dns.c" "pocketlink_portal.c" "pocketlink_pages.c" "pocketlink_activity.c" INCLUDE_DIRS ".")

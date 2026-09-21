@@ -18,6 +18,8 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "bsp_display.h"
+#include "bsp_battery.h"
+#include "pocketlink_activity.h"
 #include "bsp_button.h"
 #include "lvgl.h"
 #include "src/misc/lv_text_private.h"
@@ -71,7 +73,9 @@ static QueueHandle_t commands;
 static EventGroupHandle_t events;
 static nvs_handle_t storage;
 static httpd_handle_t http;
-static bool ap_active, busy, url_qr, ota_prompt;
+static bool ap_active, url_qr, ota_prompt;
+static pl_activity activity = {.busy = true};
+static bool battery_ready;
 static pl_ota_offer ota_offer;
 static size_t message_page;
 static int64_t displayed_message_id;
@@ -81,12 +85,33 @@ static char token[33], ap_name[33], ap_password[17], serial[32];
 static char scan_names[16][33];
 static unsigned scan_count;
 static int64_t ap_deadline;
-static lv_obj_t *title, *status_label, *qr, *message_box, *message_label, *hint;
+static lv_obj_t *title, *status_label, *qr, *message_box, *message_label, *hint, *battery_label, *loading_label;
 extern const char portal_start[] asm("_binary_portal_html_start");
 
 static void lock(void) { xSemaphoreTake(mutex, portMAX_DELAY); }
 static void unlock(void) { xSemaphoreGive(mutex); }
 static bool portal_active(void) { lock(); bool value = ap_active; unlock(); return value; }
+static bool activity_begin(void) {
+    lock(); bool accepted = pl_activity_begin(&activity); unlock(); return accepted;
+}
+static void activity_end(void) { lock(); pl_activity_end(&activity); unlock(); }
+/* LVGL drives this timer even while the worker waits for Wi-Fi, TLS or flash. */
+static void loading_tick(lv_timer_t *timer) {
+    (void)timer;
+    lock(); bool active = activity.busy; char frame = pl_activity_tick(&activity); unlock();
+    if (active) {
+        lv_label_set_text_fmt(loading_label, "处理中 %c\n请稍候", frame);
+        lv_obj_remove_flag(loading_label, LV_OBJ_FLAG_HIDDEN);
+    } else lv_obj_add_flag(loading_label, LV_OBJ_FLAG_HIDDEN);
+}
+static void update_battery(void) {
+    int percent = battery_ready ? bsp_battery_soc() : -1;
+    if (!bsp_lvgl_lock(1000)) return;
+    if (percent >= 0 && percent <= 100) lv_label_set_text_fmt(battery_label, "%d%%", percent);
+    else lv_label_set_text(battery_label, "--%");
+    lv_obj_set_style_text_color(battery_label, lv_color_hex(percent >= 0 && percent <= 20 ? 0xb34732 : 0x27735a), 0);
+    bsp_lvgl_unlock();
+}
 static void set_status(const char *s) {
     lock(); snprintf(status_text, sizeof(status_text), "%s", s); unlock();
     if (bsp_lvgl_lock(1000)) {
@@ -157,10 +182,11 @@ static void button(bsp_btn_t key, bsp_btn_ev_t event, void *user) {
     (void)user;
     if (event != BSP_BTN_CLICK && event != BSP_BTN_LONG) return;
     command cmd = {.kind = CMD_KEY, .key = key, .event = event};
-    if (key == BSP_BTN_OK && event == BSP_BTN_LONG && portal_active()) {
-        cmd.kind = CMD_CANCEL_PORTAL;
-        xQueueSendToFront(commands, &cmd, 0);
-    } else xQueueSend(commands, &cmd, 0);
+    lock();
+    if (!pl_activity_begin(&activity)) { unlock(); return; }
+    if (key == BSP_BTN_OK && event == BSP_BTN_LONG && ap_active) cmd.kind = CMD_CANCEL_PORTAL;
+    if (xQueueSend(commands, &cmd, 0) != pdTRUE) pl_activity_end(&activity);
+    unlock();
 }
 static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
     (void)arg; (void)data;
@@ -352,7 +378,7 @@ static esp_err_t status_get(httpd_req_t *req) {
     cJSON_AddNumberToObject(value, "port", saved.config.port);
     cJSON_AddStringToObject(value, "ssid", saved.config.ssid);
     cJSON_AddBoolToObject(value, "configured", saved.config.credential[0] != 0);
-    cJSON_AddBoolToObject(value, "busy", busy);
+    cJSON_AddBoolToObject(value, "busy", activity.busy);
     cJSON *networks = cJSON_AddArrayToObject(value, "scan");
     for (unsigned i = 0; i < scan_count; i++) cJSON_AddItemToArray(networks, cJSON_CreateString(scan_names[i]));
     unlock();
@@ -374,7 +400,7 @@ static esp_err_t portal_post(httpd_req_t *req) {
     }
     lock(); bool valid_token = strlen(supplied) == 32; unsigned diff = 0;
     for (unsigned i = 0; i < 32 && valid_token; i++) diff |= supplied[i] ^ token[i];
-    bool occupied = busy; unlock();
+    bool occupied = activity.busy; unlock();
     if (!valid_token || diff) return error_reply(req, "403 Forbidden", "会话已过期，请刷新页面");
     if (occupied) return error_reply(req, "409 Conflict", "设备正在处理，请稍候");
     if (!req->content_len || req->content_len > BODY_LIMIT) return error_reply(req, "400 Bad Request", "请求大小无效");
@@ -415,9 +441,12 @@ static esp_err_t portal_post(httpd_req_t *req) {
     cJSON_Delete(value);
     memset(body, 0, sizeof(body));
     if (!valid) return error_reply(req, "400 Bad Request", "请检查网络、密码、服务器和配对码");
-    lock(); busy = true; unlock();
+    lock();
+    bool accepted = ap_active && !strcmp(supplied, token) && pl_activity_begin(&activity);
+    unlock();
+    if (!accepted) { memset(&cmd, 0, sizeof(cmd)); return error_reply(req, "409 Conflict", "设备正在处理，请稍候"); }
     if (xQueueSend(commands, &cmd, 0) != pdTRUE) {
-        lock(); busy = false; unlock();
+        activity_end();
         memset(&cmd, 0, sizeof(cmd));
         return error_reply(req, "503 Service Unavailable", "设备忙，请重试");
     }
@@ -481,7 +510,7 @@ static void start_portal(void) {
         esp_wifi_set_mode(WIFI_MODE_STA); esp_wifi_start();
         set_status("热点启动失败，长按确定重试"); return;
     }
-    lock(); ap_active = true; busy = false; scan_count = 0; unlock();
+    lock(); ap_active = true; scan_count = 0; unlock();
     if (start_http() != ESP_OK) {
         lock(); ap_active = false; unlock(); esp_wifi_set_mode(WIFI_MODE_STA);
         set_status("配置页面启动失败，请长按确定重试"); return;
@@ -492,7 +521,7 @@ static void start_portal(void) {
     set_status("连接后打开 192.168.4.1；可忽略无互联网提示"); render();
 }
 static void stop_portal(bool restore_network) {
-    lock(); ap_active = false; busy = false; memset(token, 0, sizeof(token)); unlock();
+    lock(); ap_active = false; memset(token, 0, sizeof(token)); unlock();
     if (http) { httpd_stop(http); http = NULL; }
     esp_wifi_set_mode(WIFI_MODE_STA);
     memset(ap_password, 0, sizeof(ap_password));
@@ -568,7 +597,12 @@ void app_main(void) {
     lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(screen, &pocketlink_font_14, 0);
     lv_obj_set_style_bg_color(screen, lv_color_hex(0xf1f6f3), 0);
-    title = lv_label_create(screen); lv_obj_set_pos(title, 10, 8); lv_obj_set_width(title, 220);
+    title = lv_label_create(screen); lv_obj_set_pos(title, 10, 8); lv_obj_set_width(title, 152);
+    lv_obj_set_height(title, 18);
+    lv_label_set_long_mode(title, LV_LABEL_LONG_MODE_DOTS);
+    battery_label = lv_label_create(screen); lv_obj_set_pos(battery_label, 172, 8); lv_obj_set_width(battery_label, 58);
+    lv_obj_set_style_text_align(battery_label, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_label_set_text(battery_label, "--%");
     qr = lv_qrcode_create(screen); lv_qrcode_set_size(qr, 180); lv_qrcode_set_quiet_zone(qr, true);
     lv_qrcode_set_dark_color(qr, lv_color_black()); lv_qrcode_set_light_color(qr, lv_color_white());
     lv_obj_set_pos(qr, 30, 35); lv_obj_add_flag(qr, LV_OBJ_FLAG_HIDDEN);
@@ -582,17 +616,25 @@ void app_main(void) {
     status_label = lv_label_create(screen); lv_obj_set_pos(status_label, 10, 225); lv_obj_set_width(status_label, 220);
     hint = lv_label_create(screen); lv_obj_set_pos(hint, 10, 267); lv_obj_set_width(hint, 220);
     lv_obj_set_style_text_font(hint, &pocketlink_font_14, 0);
+    loading_label = lv_label_create(screen); lv_obj_set_pos(loading_label, 10, 267); lv_obj_set_size(loading_label, 220, 51);
+    lv_obj_set_style_bg_color(loading_label, lv_color_hex(0xf1f6f3), 0);
+    lv_obj_set_style_bg_opa(loading_label, LV_OPA_COVER, 0);
+    lv_obj_set_style_text_align(loading_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(loading_label, "处理中 |\n请稍候");
+    assert(lv_timer_create(loading_tick, 160, NULL));
     bsp_lvgl_unlock();
+    battery_ready = bsp_battery_init() == ESP_OK;
+    update_battery();
     ESP_ERROR_CHECK(bsp_button_init(button, NULL));
     if (nvs_flash_init() != ESP_OK || nvs_flash_init_partition("pocketcfg") != ESP_OK ||
         nvs_open_from_partition("pocketcfg", "pocketlink", NVS_READWRITE, &storage) != ESP_OK) {
-        set_status("存储初始化失败；未擦除任何分区"); pl_ota_boot_failed(); return;
+        set_status("存储初始化失败；未擦除任何分区"); activity_end(); pl_ota_boot_failed(); return;
     }
     size_t size = sizeof(saved);
     esp_err_t loaded = nvs_get_blob(storage, "state", &saved, &size);
     if (loaded != ESP_ERR_NVS_NOT_FOUND && (loaded != ESP_OK || size != sizeof(saved) ||
         !pl_config_valid(&saved.config) || !saved.config.credential[0] || !pl_inbox_valid(&saved.inbox))) {
-        set_status("配置版本或数据无效；未覆盖原数据"); pl_ota_boot_failed(); return;
+        set_status("配置版本或数据无效；未覆盖原数据"); activity_end(); pl_ota_boot_failed(); return;
     }
     if (loaded == ESP_ERR_NVS_NOT_FOUND) {
         memset(&saved, 0, sizeof(saved)); saved.config.version = PL_CONFIG_VERSION;
@@ -613,11 +655,13 @@ void app_main(void) {
     esp_sntp_setservername(1, "pool.ntp.org");
     render();
     esp_err_t ota_status=pl_ota_confirm(storage);
-    if(ota_status!=ESP_OK && ota_status!=ESP_ERR_NOT_SUPPORTED){set_status("升级状态保存失败，请检查存储");pl_ota_boot_failed();return;}
+    if(ota_status!=ESP_OK && ota_status!=ESP_ERR_NOT_SUPPORTED){set_status("升级状态保存失败，请检查存储");activity_end();pl_ota_boot_failed();return;}
     if (saved.config.ssid[0]) {
         set_status("正在连接已保存网络");
         if (!connect_wifi(&saved.config)) set_status("网络暂不可用，自动重试；长按确定配网");
     } else start_portal();
+    activity_end();
+    int64_t next_battery = esp_timer_get_time()+30000000;
     int64_t next_poll = 0, next_reconnect = 0, next_update_check = esp_timer_get_time()+30000000;
     for (;;) {
         command cmd;
@@ -636,7 +680,7 @@ void app_main(void) {
                 else if (cmd.event == BSP_BTN_CLICK && ap_active && cmd.key == BSP_BTN_OK) { url_qr = !url_qr; render(); }
                 else if (cmd.event == BSP_BTN_CLICK && !ap_active && saved.inbox.id && cmd.key == BSP_BTN_OK) {
                     saved_state next = saved; pl_inbox_read(&next.inbox);
-                    if (persist(&next)) { set_status("已读回执等待服务器确认"); next_poll = 0; }
+                    if (persist(&next)) { set_status("已读回执等待服务器确认"); receive_text(); next_poll = esp_timer_get_time() + 5000000; }
                 } else if (cmd.event == BSP_BTN_CLICK && !ap_active && bsp_lvgl_lock(500)) {
                     if (saved.inbox.id && (cmd.key == BSP_BTN_UP || cmd.key == BSP_BTN_DOWN)) {
                         if (cmd.key == BSP_BTN_UP && message_page) message_page--;
@@ -647,21 +691,27 @@ void app_main(void) {
                 }
             } else if (ap_active) {
                 if (cmd.kind == CMD_SCAN) scan_wifi(); else configure(&cmd);
-                lock(); busy = false; unlock();
+
             }
             memset(&cmd, 0, sizeof(cmd));
+            activity_end();
         }
         int64_t now = esp_timer_get_time();
-        if (ap_active && now >= ap_deadline) { stop_portal(true); next_reconnect = 0; set_status("配网已超时关闭；长按确定重新开始"); }
-        if (!ap_active && saved.config.ssid[0] && !(xEventGroupGetBits(events) & LINK_UP) && now >= next_reconnect) {
-            set_status("网络已断开，正在重连"); connect_wifi(&saved.config); next_reconnect = esp_timer_get_time() + 15000000;
+        if (now >= next_battery && activity_begin()) {
+            update_battery(); next_battery = esp_timer_get_time() + 30000000; activity_end();
         }
-        if (!ap_active && !ota_prompt && (xEventGroupGetBits(events) & LINK_UP) && now >= next_poll) {
+        if (ap_active && now >= ap_deadline && activity_begin()) {
+            stop_portal(true); next_reconnect = 0; set_status("配网已超时关闭；长按确定重新开始"); activity_end();
+        }
+        if (!ap_active && saved.config.ssid[0] && !(xEventGroupGetBits(events) & LINK_UP) && now >= next_reconnect && activity_begin()) {
+            set_status("网络已断开，正在重连"); connect_wifi(&saved.config); next_reconnect = esp_timer_get_time() + 15000000; activity_end();
+        }
+        if (!ap_active && !ota_prompt && (xEventGroupGetBits(events) & LINK_UP) && now >= next_poll && activity_begin()) {
             if (clock_ready()) receive_text();
-            next_poll = esp_timer_get_time() + 5000000;
+            next_poll = esp_timer_get_time() + 5000000; activity_end();
         }
-        if(!ap_active && !ota_prompt && !saved.inbox.id && (xEventGroupGetBits(events)&LINK_UP) && now>=next_update_check){
-            check_update(false);next_update_check=esp_timer_get_time()+1800000000LL;
+        if(!ap_active && !ota_prompt && !saved.inbox.id && (xEventGroupGetBits(events)&LINK_UP) && now>=next_update_check && activity_begin()){
+            check_update(false);next_update_check=esp_timer_get_time()+1800000000LL;activity_end();
         }
     }
 }

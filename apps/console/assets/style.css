@@ -21,3 +21,5 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
   .sidebar{height:auto;overflow:visible}
   .sidebar nav{overscroll-behavior:none}
 }
+
+#message-history{max-height:min(420px,50dvh);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:8px}

@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Show fuel-gauge battery percentage and low-charge color, animate a lightweight loading indicator independently of the worker, reject overlapping operations, and bound web message history with internal scrolling.
+
 - Allow long-OK cancellation of device provisioning with saved-network recovery; replace message scrolling with fixed pages, clamp short messages and preserve the page across receipt updates.
 
 - Fix unnecessary login-page scrolling and sidebar rubber-banding with a viewport-bound layout and independent content scrolling; keep forms accessible on small screens.
