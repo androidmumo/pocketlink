@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Keep background polling, battery reads, reconnects and update checks out of interactive loading/locking. Show a single-line wait message with a trailing spinner for manual work, and reject stale keys after message/view changes.
+
 - Show fuel-gauge battery percentage and low-charge color, animate a lightweight loading indicator independently of the worker, reject overlapping operations, and bound web message history with internal scrolling.
 
 - Allow long-OK cancellation of device provisioning with saved-network recovery; replace message scrolling with fixed pages, clamp short messages and preserve the page across receipt updates.
