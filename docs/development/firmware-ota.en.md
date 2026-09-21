@@ -10,7 +10,7 @@ The server needs migration 004; provisioning and text reception still work with 
 
 Published `0.4.4`, sequence `4`, size `2,211,888` bytes, SHA256 `e1d2db948f8f1e6f0ffa69e04185a8da114f0e13c34f0c6b94e5d3a551f8e193`, source commit `afe9d36`. Removes duplicate provisioning instructions from the empty inbox, retaining the bottom long-OK provisioning hint.
 
-Local host checks, both firmware builds, protected-layout validation and GitHub CI passed. The server verified and published the package with an actual publication timestamp. The consistent online backup `backups/before-ota-0.4.4-20260921T125722Z.tar.gz` includes the SQLite snapshot and matching invitation recovery key; integrity checks passed. Long-Up checks for updates and long-Down installs. Device display acceptance for this version awaits the user.
+Local host checks, both firmware builds, protected-layout validation and GitHub CI passed. The server verified and published the package with an actual publication timestamp. The consistent online backup `backups/before-ota-0.4.4-20260921T125722Z.tar.gz` includes the SQLite snapshot and matching invitation recovery key; integrity checks passed. Long-Up checks for updates and long-Down installs. The user confirmed installation of 0.4.4 and correct provisioning hints without duplication.
 
 ## Previous OTA release 0.4.3 (2026-09-21)
 
