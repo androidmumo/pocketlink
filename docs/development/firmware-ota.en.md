@@ -6,7 +6,13 @@ Implemented in source; the user confirmed the 0.4.2 online upgrade and its displ
 Packages update the PocketLink application only, not other games, bootloaders or partition tables.
 The server needs migration 004; provisioning and text reception still work with the older server.
 
-## Current OTA release 0.4.3 (2026-09-21)
+## Current OTA release 0.4.4 (2026-09-21)
+
+Published `0.4.4`, sequence `4`, size `2,211,888` bytes, SHA256 `e1d2db948f8f1e6f0ffa69e04185a8da114f0e13c34f0c6b94e5d3a551f8e193`, source commit `afe9d36`. Removes duplicate provisioning instructions from the empty inbox, retaining the bottom long-OK provisioning hint.
+
+Local host checks, both firmware builds, protected-layout validation and GitHub CI passed. The server verified and published the package with an actual publication timestamp. The consistent online backup `backups/before-ota-0.4.4-20260921T125722Z.tar.gz` includes the SQLite snapshot and matching invitation recovery key; integrity checks passed. Long-Up checks for updates and long-Down installs. Device display acceptance for this version awaits the user.
+
+## Previous OTA release 0.4.3 (2026-09-21)
 
 Published `0.4.3`, sequence `3`, size `2,211,920` bytes, SHA256 `3361ca51a0d645d99008e860e653ae1a010b6604f8894cad7ceddb4939c1afbe`, from source commit `a8afe48`. Background polling, battery reads, reconnects and update checks no longer trigger loading or claim the interaction lock. Manual slow actions show a single-line wait message with a trailing spinner. Immediate page turns do not show loading; queued keys cannot act on a changed message/view.
 

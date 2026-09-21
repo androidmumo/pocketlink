@@ -58,8 +58,8 @@ production pulling are distinct permissions. CI performs no production updates.
 ## Current trial environment (upgraded and verified 2026-09-21)
 
 - URL: `https://pocketlink.mcloc.cn`, proxied by 1Panel to `127.0.0.1:3002`.
-- Application commit: `b4ab64ae4e8e4f6029b19011d09d877c3f462ace`.
-- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:5a2e62e4a837d323ae2946f52cf48ba3d393acc36801a0ea8e46ca23dc2c0270`.
+- Application commit: `afe9d363af554d1dc1f2b60cace6e86491cfc660`.
+- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:556ae4ef97de6ac1634a93ab030afdf72895f78190aad1406fe81aa910543740`.
 - Active configuration: `/opt/pocketlink/compose.yaml`, `compose.auth.yaml` and `.env`.
 - Persistent files live under `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`:
   `data/` holds SQLite, `secrets/admin_password` the administrator secret and `backups/` consistent backups.
@@ -98,3 +98,5 @@ A recovery key is automatically stored beside the database with the `.invitation
 
 
 The custom room picker supports arrow keys, Enter and Escape. New active invitations can be viewed and copied again; lost legacy codes must be revoked and replaced. The release library shows upload time and latest publication time in the browser time zone. Historical missing publication dates display “Not recorded”, never the upload time. Repeating publication of the active release preserves its timestamp; withdrawal retains it, and republication updates it.
+
+On 2026-09-21, deployed the custom room picker, encrypted invitation recovery and publication dates. The pre-upgrade backup `backups/before-console-refinements-20260921T125516Z.tar.gz` passed extraction and SQLite integrity checks. Migration 006, retained record counts, key-file permissions, HTTPS login and API checks passed; other containers retained their start times and restart counts. A single verification invitation was recovered and then revoked; no account or message was created. All three deployed UI assets match the locally browser-tested files by SHA256. OTA 0.4.4 is published; device display acceptance remains pending. Future backups must preserve the matching `.invitation-key` file.

@@ -24,14 +24,14 @@
 | 数据库 | 上述目录的 `data/relay.db`，以及运行时的 SQLite WAL 文件 |
 | 管理员密码 | 上述目录的 `secrets/admin_password` |
 | 备份 | 上述目录的 `backups/`；目前没有自动备份任务 |
-| 应用版本 | `b4ab64ae4e8e4f6029b19011d09d877c3f462ace` |
+| 应用版本 | `afe9d363af554d1dc1f2b60cace6e86491cfc660` |
 | 资源限制 | 192 MB 内存、0.5 CPU、128 个进程；非 root、只读根文件系统 |
 
 网页已包含在服务端镜像中，无需另外部署前端或安装 MySQL。SQLite 使用专属目录持久化。
 现有部署通过了 HTTPS 登录、退出、重启会话失效、备份恢复及数据库完整性检查；尚未验证真机配对。
 
 
-签名 OTA 管理已于 2026-09-20 部署：可上传、发布、撤回和删除固件包。当前已发布 OTA `0.4.3`（序号 3），包含静默后台任务、单行手动加载提示，保留电量显示、配网退出和消息翻页；已完成首次有线安装的设备可在线升级；用户已确认 0.4.2 升级、电量与操作反馈正常，其他专项验收仍待完成。详见 [OTA 教程](docs/development/firmware-ota.md)。升级前备份为 `backups/before-ota-20260920T021947Z.tar.gz`。
+签名 OTA 管理已于 2026-09-20 部署：可上传、发布、撤回和删除固件包。当前已发布 OTA `0.4.4`（序号 4），删除空收信页重复的配网说明，保留静默后台任务、单行手动加载提示，保留电量显示、配网退出和消息翻页；已完成首次有线安装的设备可在线升级；用户已确认此前 0.4.3 升级及静默/手动加载反馈正常；0.4.4 的真机显示待确认。详见 [OTA 教程](docs/development/firmware-ota.md)。升级前备份为 `backups/before-ota-20260920T021947Z.tar.gz`。
 
 邀请码注册、独立用户空间、共享房间和新版工作台已于 2026-09-21 部署。原有数据归管理员，原密码文件及设备凭证保留。升级前备份为 `backups/before-accounts-20260921T060225Z.tar.gz`；回退旧镜像必须同时恢复匹配的旧数据库。
 
@@ -80,7 +80,7 @@ test ! -e /opt/pocketlink
 test ! -e /opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
 git clone https://github.com/androidmumo/pocketlink.git /opt/pocketlink-src
 cd /opt/pocketlink-src
-git checkout b4ab64ae4e8e4f6029b19011d09d877c3f462ace
+git checkout afe9d363af554d1dc1f2b60cace6e86491cfc660
 install -d -m 700 /opt/pocketlink
 cp deploy/compose.yaml deploy/compose.auth.yaml /opt/pocketlink/
 base=/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
@@ -98,10 +98,10 @@ PASSWORD
 ```
 
 在 `/opt/pocketlink/.env` 写入以下内容，设置权限为 `600`。固定镜像摘要来自
-[已通过的 CI 构建](https://github.com/androidmumo/pocketlink/actions/runs/35595351475)，不要把浮动 `edge` 当作固定版本。
+[已通过的 CI 构建](https://github.com/androidmumo/pocketlink/actions/runs/35601108984)，不要把浮动 `edge` 当作固定版本。
 
 ```dotenv
-POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:5a2e62e4a837d323ae2946f52cf48ba3d393acc36801a0ea8e46ca23dc2c0270
+POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:556ae4ef97de6ac1634a93ab030afdf72895f78190aad1406fe81aa910543740
 POCKETLINK_HTTP_PORT=3002
 POCKETLINK_LOG_LEVEL=info
 POCKETLINK_PUBLIC_ORIGIN=https://pocketlink.mcloc.cn
