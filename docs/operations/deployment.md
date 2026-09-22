@@ -47,8 +47,8 @@ GITHUB_TOKEN 发布权限与生产拉取权限不同。CI 不更新生产。
 ## 当前体验环境（2026-09-21 升级并复核）
 
 - 地址：`https://pocketlink.mcloc.cn`，1Panel 代理到 `127.0.0.1:3002`。
-- 应用版本：`afe9d363af554d1dc1f2b60cace6e86491cfc660`。
-- 镜像：`ghcr.io/androidmumo/pocketlink-relay@sha256:556ae4ef97de6ac1634a93ab030afdf72895f78190aad1406fe81aa910543740`。
+- 应用版本：`78a53484c3ac57fe986276989bae8332e695950f`。
+- 镜像：`ghcr.io/androidmumo/pocketlink-relay@sha256:fe87acbda7190405d0475c2ee781b714273f370b571ce133f2718db46a3f67d1`。
 - 生效配置：`/opt/pocketlink/compose.yaml`、`compose.auth.yaml` 和 `.env`。
 - 所有持久化文件位于 `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`：
   `data/` 为 SQLite，`secrets/admin_password` 为管理密码，`backups/` 为一致性备份。
@@ -86,3 +86,9 @@ WebSocket 收信、重连补发和回执已通过主机与 CI 测试；真实代
 工作台的房间选择使用自定义下拉列表，支持键盘方向键、Enter 确认和 Escape 关闭。新邀请码可在“邀请码”列表再次查看、复制；旧码仅存哈希，遗失后需撤销重建。版本库分别显示上传时间和最近发布时间（浏览器本地时区）；迁移前的发布时间显示“未记录”，不以上传时间代替。重复发布当前版本保留时间，撤回保留历史时间，重新发布更新最近发布时间。
 
 2026-09-21 已部署自定义房间下拉框、邀请码加密恢复和版本发布时间。升级前备份 `backups/before-console-refinements-20260921T125516Z.tar.gz` 解压及 SQLite 完整性检查通过；迁移 006、原数据数量、密钥文件权限、HTTPS 登录与接口检查正常，其他容器启动时间与重启次数未变。生成的单个验证邀请码已在验证原码恢复后撤销，未创建账号或发送消息。线上三份网页资源与本地浏览器验收文件的 SHA256 一致。当前 OTA 0.4.4 已发布；用户已确认升级至 0.4.4 且提示显示正常。后续备份必须保留匹配的 `.invitation-key` 文件。
+
+## 2026-09-22 对讲与房间操作区部署
+
+部署源码 `78a5348`，CI [35703429952](https://github.com/androidmumo/pocketlink/actions/runs/35703429952) 的主机、固件、amd64/arm64 容器启动测试及镜像发布全部通过。升级前备份 `backups/before-intercom-20260922T082059Z.tar.gz` 包含完整数据和配置，解压后的 SQLite 完整性检查通过；本次无数据库迁移。容器健康、原数据数量、密钥权限、六份网页资源哈希、HTTPS 接口和真实代理后的 WSS 子协议握手均通过。只建立验证连接，没有发送生产音频或消息；验证邀请码已撤销，其他容器启动时间及重启次数未变。
+
+端口保持 `127.0.0.1:3002`，数据路径保持不变，无新增 UDP 端口或共享代理重启。OTA 0.5.0 已发布、需设备手动确认安装；用户选择先发布，真机验收待方便时进行。注册邀请码在管理员页面，房间邀请码在当前房间的“邀请朋友”操作区；不要混用。

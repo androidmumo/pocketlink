@@ -6,7 +6,15 @@ Implemented in source; the user confirmed the 0.4.2 online upgrade and its displ
 Packages update the PocketLink application only, not other games, bootloaders or partition tables.
 The server needs migration 004; provisioning and text reception still work with the older server.
 
-## Current OTA release 0.4.4 (2026-09-21)
+## Current OTA release 0.5.0 (2026-09-22)
+
+Published `0.5.0`, sequence `5`, size `2,322,384` bytes, SHA256 `e90fb059cbfd0d3eae540680164220607e99891179e22e136293fd8c5ab517b9`, source commit `78a5348`. Adds sender/send-time metadata for new messages, a Beijing-time clock, and browser/device half-duplex room intercom. See [usage](voice.en.md).
+
+Local host checks, both firmware builds, protected-layout validation, GitHub CI and isolated synthetic browser audio tests passed. The server verified and published the package. Consistent backup `backups/before-ota-0.5.0-20260922T082220Z.tar.gz` includes SQLite and its matching invitation recovery key and passed integrity checks. The user deferred physical testing; installation, clock/message display, audio quality, latency, actual mobile compatibility and two-device intercom remain unverified.
+
+When convenient, hold Up on the inbox to check for `0.5.0`, then hold Down to install with stable power. After upgrading, hold Down on the inbox to enter intercom, tap Up/Down to switch rooms, hold OK to speak, release to listen, and hold Down to exit. First add the device to the room in the console. Send a new message to verify sender and timestamp; existing messages without metadata display unknown values.
+
+## Historical OTA release 0.4.4 (2026-09-21)
 
 Published `0.4.4`, sequence `4`, size `2,211,888` bytes, SHA256 `e1d2db948f8f1e6f0ffa69e04185a8da114f0e13c34f0c6b94e5d3a551f8e193`, source commit `afe9d36`. Removes duplicate provisioning instructions from the empty inbox, retaining the bottom long-OK provisioning hint.
 

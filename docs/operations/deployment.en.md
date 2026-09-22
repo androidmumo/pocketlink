@@ -58,8 +58,8 @@ production pulling are distinct permissions. CI performs no production updates.
 ## Current trial environment (upgraded and verified 2026-09-21)
 
 - URL: `https://pocketlink.mcloc.cn`, proxied by 1Panel to `127.0.0.1:3002`.
-- Application commit: `afe9d363af554d1dc1f2b60cace6e86491cfc660`.
-- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:556ae4ef97de6ac1634a93ab030afdf72895f78190aad1406fe81aa910543740`.
+- Application commit: `78a53484c3ac57fe986276989bae8332e695950f`.
+- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:fe87acbda7190405d0475c2ee781b714273f370b571ce133f2718db46a3f67d1`.
 - Active configuration: `/opt/pocketlink/compose.yaml`, `compose.auth.yaml` and `.env`.
 - Persistent files live under `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`:
   `data/` holds SQLite, `secrets/admin_password` the administrator secret and `backups/` consistent backups.
@@ -100,3 +100,9 @@ A recovery key is automatically stored beside the database with the `.invitation
 The custom room picker supports arrow keys, Enter and Escape. New active invitations can be viewed and copied again; lost legacy codes must be revoked and replaced. The release library shows upload time and latest publication time in the browser time zone. Historical missing publication dates display “Not recorded”, never the upload time. Repeating publication of the active release preserves its timestamp; withdrawal retains it, and republication updates it.
 
 On 2026-09-21, deployed the custom room picker, encrypted invitation recovery and publication dates. The pre-upgrade backup `backups/before-console-refinements-20260921T125516Z.tar.gz` passed extraction and SQLite integrity checks. Migration 006, retained record counts, key-file permissions, HTTPS login and API checks passed; other containers retained their start times and restart counts. A single verification invitation was recovered and then revoked; no account or message was created. All three deployed UI assets match the locally browser-tested files by SHA256. OTA 0.4.4 is published; the user confirmed 0.4.4 installation and correct display. Future backups must preserve the matching `.invitation-key` file.
+
+## 2026-09-22 intercom and room actions deployment
+
+Deployed source `78a5348`. CI [35703429952](https://github.com/androidmumo/pocketlink/actions/runs/35703429952) passed host checks, firmware builds, amd64/arm64 container smoke tests and image publication. Backup `backups/before-intercom-20260922T082059Z.tar.gz` includes all data and configuration; extracted SQLite integrity checks passed. No database migration was introduced. Container health, retained data counts, key permissions, six UI asset hashes, HTTPS APIs and the WSS subprotocol handshake through the production proxy passed. The verification connection sent no production audio or message; its test invitation was revoked. Other containers retained their start times and restart counts.
+
+The listener remains `127.0.0.1:3002` with the same data path, no new UDP port and no shared-proxy restart. OTA 0.5.0 is published and requires manual confirmation on the device. The user chose publication first and deferred physical acceptance. Registration invitations remain on the administrator page; room invitations are in the selected room's Invite friends action panel.
