@@ -8,7 +8,7 @@
 2. Open Invitations, create a registration code and share it privately. New active codes can be displayed again using View / Copy in the list, then copied using Copy invitation. It expires after seven days, can be consumed once, and can be revoked before use.
 3. The recipient selects Invite registration, supplies a username, password and code, then signs in with the new account.
 4. Generate a device pairing code under My devices. The device belongs to the account that generated that code. Device codes still expire after ten minutes and are separate from registration invitations.
-5. Create a room and choose Invite under Room partners. A signed-in friend enters that room code under Join a friend's room to accept.
+5. Create a room and choose Invite friends in the top action area. A signed-in friend chooses Join room in the same area and enters that room code to accept.
 6. Each person chooses their own receiving devices. New users cannot read pre-join history; new devices do not receive old messages.
 7. Owners can remove partners; partners can leave. Their devices leave that room and pending delivery is withdrawn. Text already displayed on an offline device cannot be instantly erased.
 
@@ -62,3 +62,7 @@ Host tests cover populated legacy migration, cross-account denial, expiry/revoca
 Migration `006_console.sql` adds AES-256-GCM encrypted originals for new invitations. Only their creator can retrieve active codes. Consumption and revocation clear ciphertext; expired codes and codes for archived rooms cannot be retrieved. Legacy hashes cannot be reversed; revoke and generate a replacement if the original was lost.
 
 A recovery key is automatically stored beside the database with the `.invitation-key` suffix (default `data/relay.db.invitation-key`, mode 0600). Back up and restore the **entire data directory**, including the matching key, not SQLite alone. Startup refuses to replace a missing key when encrypted invitations exist; restore the matching backup instead. The key is independent of administrator password changes. Access to both the database and key exposes active codes; protect both and their backups as credentials.
+
+## Invitation entry points
+
+Registration invitations are administrator-only navigation. Room invitations live in the selected room’s Invite friends panel and only list that room’s codes. Create, Join and Invite share a prominent action area; forms expand on demand. Partners cannot issue invitations on behalf of the owner.

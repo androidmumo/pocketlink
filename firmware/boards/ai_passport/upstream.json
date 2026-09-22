@@ -12,7 +12,7 @@
       "upstream_path": "components/bsp/idf_component.yml",
       "path": "firmware/boards/ai_passport/components/bsp/idf_component.yml",
       "upstream_sha256": "a23abb8bf5fe1f86199eb29af4b90b8ed4fc0b8ca5c9aed86a2eca2157f00043",
-      "adapted": false
+      "adapted": true
     },
     {
       "upstream_path": "components/bsp/include/bsp_audio.h",
@@ -30,7 +30,7 @@
       "upstream_path": "components/bsp/include/bsp_button.h",
       "path": "firmware/boards/ai_passport/components/bsp/include/bsp_button.h",
       "upstream_sha256": "aea1b894d98592b1fd33ab22aad133d2974bfb28255f90a58799a7f9767c0501",
-      "adapted": false
+      "adapted": true
     },
     {
       "upstream_path": "components/bsp/include/bsp_display.h",
@@ -54,7 +54,7 @@
       "upstream_path": "components/bsp/src/bsp_button.c",
       "path": "firmware/boards/ai_passport/components/bsp/src/bsp_button.c",
       "upstream_sha256": "c2f8b257f22da62bc0bde94446bfeb64e4eb9333015cfaf09e06c3e11465413c",
-      "adapted": false
+      "adapted": true
     },
     {
       "upstream_path": "components/bsp/src/bsp_i2c.c",
@@ -114,7 +114,7 @@
       "upstream_path": "main/demo_button.c",
       "path": "firmware/apps/board-check/main/demo_button.c",
       "upstream_sha256": "d0b47f59e08784f8adf16693747c51356a0f3110c7d9243bcfcd929170ad11f3",
-      "adapted": false
+      "adapted": true
     },
     {
       "upstream_path": "main/ui_pixel_math.h",
@@ -198,7 +198,7 @@
       "upstream_path": "dependencies.lock",
       "path": "firmware/apps/board-check/dependencies.lock",
       "upstream_sha256": "593fa5027afa40e795c4020e894b7da3603651187f215d4e705524db151362fd",
-      "adapted": false
+      "adapted": true
     },
     {
       "upstream_path": "tools/verify_firmware.py",

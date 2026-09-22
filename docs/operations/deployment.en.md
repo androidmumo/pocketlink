@@ -4,7 +4,7 @@
 
 The user authorized deployment of invite registration and shared rooms, with isolated accounts,
 device management, room permissions, text sending, offline delivery and receipts.
-Device reception firmware awaits physical acceptance; voice intercom is not implemented.
+The source includes development half-duplex intercom; physical audio quality and latency await acceptance. The deployment records below identify the production version.
 The user manages the domain and HTTPS reverse proxy in 1Panel.
 
 ## Isolated deployment configuration

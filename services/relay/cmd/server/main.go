@@ -72,7 +72,7 @@ func run(ctx context.Context, c config.Config, logger *slog.Logger) error {
 		if err != nil {
 			return err
 		}
-		api.EnableAuth(auth, console.Handler())
+		api.EnableAuth(auth, console.Handler(c.PublicOrigin))
 		stage = "text"
 	}
 	srv := &http.Server{Handler: api, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}

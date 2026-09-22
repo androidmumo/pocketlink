@@ -44,6 +44,7 @@
 #include "pocketlink_dns.h"
 #include "pocketlink_portal.h"
 #include "pocketlink_ota.h"
+#include "pocketlink_voice.h"
 #include "esp_system.h"
 
 #define AP_IP "192.168.4.1"
@@ -69,6 +70,16 @@ typedef struct {
     uint32_t view_generation;
 } command;
 static saved_state saved;
+/* Keep the original state blob ABI for OTA rollback. Match metadata by message ID. */
+typedef struct { int64_t id, sent_at; char sender[33]; } message_meta;
+static message_meta inbox_meta;
+static lv_obj_t *clock_label, *sender_label, *sent_label;
+static void clock_tick(lv_timer_t *timer) {
+    (void)timer; time_t now=time(NULL); char text[8]="--:--";
+    if(now>1767225600){now+=8*3600;struct tm local;gmtime_r(&now,&local);strftime(text,sizeof(text),"%H:%M",&local);}
+    if(strcmp(lv_label_get_text(clock_label),text))lv_label_set_text(clock_label,text);
+}
+
 static SemaphoreHandle_t mutex;
 static QueueHandle_t commands;
 static EventGroupHandle_t events;
@@ -80,7 +91,10 @@ static bool battery_ready;
 /* Published view context prevents a queued key from acting on a new message/prompt. */
 static uint32_t view_generation;
 static int64_t view_message_id;
-static bool view_ap, view_ota;
+static bool view_ap, view_ota, voice_mode, view_voice;
+static struct {char id[65],name[161];} voice_rooms[64];
+static size_t voice_count,voice_index;
+
 static pl_ota_offer ota_offer;
 static size_t message_page;
 static int64_t displayed_message_id;
@@ -95,6 +109,11 @@ extern const char portal_start[] asm("_binary_portal_html_start");
 
 static void lock(void) { xSemaphoreTake(mutex, portMAX_DELAY); }
 static void unlock(void) { xSemaphoreGive(mutex); }
+static void voice_tick(lv_timer_t *timer){
+    (void)timer;lock();bool visible=view_voice;unlock();
+    if(visible){char text[192];pl_voice_status(text,sizeof(text));if(strcmp(lv_label_get_text(message_label),text))lv_label_set_text(message_label,text);}
+}
+
 static bool portal_active(void) { lock(); bool value = ap_active; unlock(); return value; }
 static bool background_allowed(void) {
     lock(); bool idle = !activity.busy; unlock(); return idle;
@@ -145,27 +164,34 @@ static void render_message(void) {
         message_page = 0;
     }
     const char *text = saved.inbox.id ? saved.inbox.text : "等待消息";
-    pl_page page = pl_page_find(text, 8, message_page, message_next_line, NULL);
+    bool has_meta=saved.inbox.id && inbox_meta.id==saved.inbox.id;
+    lv_label_set_text(sender_label,saved.inbox.id?(has_meta&&inbox_meta.sender[0]?inbox_meta.sender:"发送人未知"):"");
+    char sent[40]="发送时间未知";
+    if(has_meta&&inbox_meta.sent_at>0){time_t when=inbox_meta.sent_at+8*3600;struct tm local;gmtime_r(&when,&local);strftime(sent,sizeof(sent),"%Y-%m-%d %H:%M",&local);}
+    lv_label_set_text(sent_label,saved.inbox.id?sent:"");
+    lv_obj_set_y(message_label,saved.inbox.id?40:0);
+    pl_page page = pl_page_find(text, saved.inbox.id?6:8, message_page, message_next_line, NULL);
     message_page = page.index;
     memcpy(page_text, text + page.begin, page.end - page.begin);
     page_text[page.end - page.begin] = 0;
     lv_label_set_text(message_label, page_text);
     if (saved.inbox.id && page.count > 1)
-        lv_label_set_text_fmt(hint, "第 %u/%u 页 · 上下翻页\n确定：已读 · 长按：配网\n长按上键：检查更新", (unsigned)page.index + 1, (unsigned)page.count);
+        lv_label_set_text_fmt(hint, "第 %u/%u 页 · 上下翻页\n确定：已读 · 长按：配网\n长按上/下键：更新/对讲", (unsigned)page.index + 1, (unsigned)page.count);
     else
-        lv_label_set_text(hint, saved.inbox.id ? "确定：已读\n长按确定：配网\n长按上键：检查更新" : "长按确定：配网\n长按上键：检查更新");
+        lv_label_set_text(hint, saved.inbox.id ? "确定：已读\n长按确定：配网\n长按上/下键：更新/对讲" : "长按确定：配网\n长按上键：更新\n长按下键：对讲");
 }
 static void render(void) {
     if (!bsp_lvgl_lock(1000)) return;
     lock();
-    if (view_message_id != saved.inbox.id || view_ap != ap_active || view_ota != ota_prompt) view_generation++;
-    view_message_id = saved.inbox.id; view_ap = ap_active; view_ota = ota_prompt;
+    if (view_message_id != saved.inbox.id || view_ap != ap_active || view_ota != ota_prompt || view_voice != voice_mode) view_generation++;
+    view_message_id = saved.inbox.id; view_ap = ap_active; view_ota = ota_prompt; view_voice=voice_mode;
     unlock();
+    lv_obj_remove_flag(sender_label,LV_OBJ_FLAG_HIDDEN);lv_obj_remove_flag(sent_label,LV_OBJ_FLAG_HIDDEN);
     if (ap_active) {
         char data[160];
         lv_obj_remove_flag(qr, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(message_box, LV_OBJ_FLAG_HIDDEN);
-        lv_label_set_text(title, url_qr ? "第二步：打开配置页" : "第一步：扫码连接热点");
+        lv_label_set_text(title, url_qr ? "2.打开配网页" : "1.扫码连热点");
         if (url_qr) snprintf(data, sizeof(data), AP_ORIGIN);
         else snprintf(data, sizeof(data), "WIFI:T:WPA;S:%s;P:%s;;", ap_name, ap_password);
         if (lv_qrcode_update(qr, data, strlen(data)) != LV_RESULT_OK) {
@@ -173,10 +199,17 @@ static void render(void) {
             lv_label_set_text(title, "二维码生成失败，请手动连接");
         }
         lv_label_set_text_fmt(hint, "%s\n密码 %s\n确定切换 · 长按退出", ap_name, ap_password);
+    } else if (voice_mode) {
+        lv_obj_add_flag(qr,LV_OBJ_FLAG_HIDDEN);lv_obj_remove_flag(message_box,LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(title,"房间对讲");lv_label_set_text(sender_label,voice_rooms[voice_index].name);
+        lv_label_set_text_fmt(sent_label,"房间 %u/%u",(unsigned)voice_index+1,(unsigned)voice_count);lv_obj_set_y(message_label,40);
+        char text[192];pl_voice_status(text,sizeof(text));if(strcmp(lv_label_get_text(message_label),text))lv_label_set_text(message_label,text);
+        lv_label_set_text(hint,"按住确定：讲话\n上下：切换房间\n长按下键：退出对讲");
     } else if (ota_prompt) {
         lv_obj_add_flag(qr, LV_OBJ_FLAG_HIDDEN);
         lv_obj_remove_flag(message_box, LV_OBJ_FLAG_HIDDEN);
         lv_label_set_text(title, "发现固件更新");
+        lv_obj_add_flag(sender_label,LV_OBJ_FLAG_HIDDEN);lv_obj_add_flag(sent_label,LV_OBJ_FLAG_HIDDEN);lv_obj_set_y(message_label,0);
         lv_label_set_text_fmt(message_label, "版本 %s\n序号 %lld\n大小 %d KB\n\n签名已验证。\n升级期间请保持供电。", ota_offer.version, (long long)ota_offer.sequence, ota_offer.size / 1024);
         lv_label_set_text(hint, "长按下键：确认升级\n确定：取消");
     } else {
@@ -189,10 +222,12 @@ static void render(void) {
 }
 static void button(bsp_btn_t key, bsp_btn_ev_t event, void *user) {
     (void)user;
+    lock();bool talking=view_voice;unlock();
+    if(talking&&key==BSP_BTN_OK){if(event==BSP_BTN_PRESS)pl_voice_hold(true);if(event==BSP_BTN_RELEASE)pl_voice_hold(false);return;}
     if (event != BSP_BTN_CLICK && event != BSP_BTN_LONG) return;
     command cmd = {.kind = CMD_KEY, .key = key, .event = event};
     lock();
-    bool loading = (event == BSP_BTN_LONG && ((!view_ota && key == BSP_BTN_OK) || (!view_ap && !view_ota && key == BSP_BTN_UP) || (view_ota && key == BSP_BTN_DOWN))) ||
+    bool loading = talking || (event == BSP_BTN_LONG && key==BSP_BTN_DOWN) || (event == BSP_BTN_LONG && ((!view_ota && key == BSP_BTN_OK) || (!view_ap && !view_ota && key == BSP_BTN_UP) || (view_ota && key == BSP_BTN_DOWN))) ||
                    (event == BSP_BTN_CLICK && key == BSP_BTN_OK && !view_ap && !view_ota && view_message_id);
     if (!pl_activity_begin(&activity, loading)) { unlock(); return; }
     cmd.view_generation = view_generation;
@@ -316,11 +351,33 @@ static void receive_text(void) {
         const cJSON *text = cJSON_GetObjectItemCaseSensitive(first, "text");
         if (cJSON_IsNumber(id) && id->valuedouble > 0 && id->valuedouble <= 9007199254740991.0 &&
             id->valuedouble == (double)(int64_t)id->valuedouble && cJSON_IsString(text) && strlen(text->valuestring) <= TEXT_LIMIT) {
-            if (pl_inbox_accept(&next.inbox, (int64_t)id->valuedouble, text->valuestring) && persist(&next)) { set_status("新消息已保存，确定键标记已读"); render(); }
+            if (pl_inbox_accept(&next.inbox, (int64_t)id->valuedouble, text->valuestring)) {
+                message_meta meta={.id=next.inbox.id};
+                const cJSON *sender=cJSON_GetObjectItemCaseSensitive(first,"sender"), *sent=cJSON_GetObjectItemCaseSensitive(first,"created_at");
+                if(cJSON_IsString(sender)&&strlen(sender->valuestring)<=32&&pl_utf8_valid(sender->valuestring))strcpy(meta.sender,sender->valuestring);
+                if(cJSON_IsNumber(sent)&&sent->valuedouble>0&&sent->valuedouble<=4102444800.0&&sent->valuedouble==(double)(int64_t)sent->valuedouble)meta.sent_at=(int64_t)sent->valuedouble;
+                if(nvs_set_blob(storage,"inbox_meta",&meta,sizeof(meta))==ESP_OK&&persist(&next)){inbox_meta=meta;set_status("新消息已保存，确定键标记已读");render();}
+            }
         } else set_status("消息格式不支持，未确认接收");
     } else if (cJSON_IsArray(messages)) set_status("已连接服务器，等待消息");
     else set_status("服务器返回格式错误");
     cJSON_Delete(response);
+}
+static void enter_voice(void){
+    if(!(xEventGroupGetBits(events)&LINK_UP)||!saved.config.credential[0]){set_status("请先联网并绑定设备");return;}
+    int status=0;cJSON *response=relay_request(&saved.config,"/api/v1/device/rooms",NULL,&status);
+    cJSON *rooms=response?cJSON_GetObjectItemCaseSensitive(response,"rooms"):NULL;voice_count=0;
+    if(cJSON_IsArray(rooms)){cJSON *room; cJSON_ArrayForEach(room,rooms){
+        cJSON *id=cJSON_GetObjectItemCaseSensitive(room,"id"),*name=cJSON_GetObjectItemCaseSensitive(room,"name");
+        if(voice_count>=64)break;
+        if(!cJSON_IsString(id)||!cJSON_IsString(name)||strlen(id->valuestring)>64||strlen(name->valuestring)>160||!pl_utf8_valid(name->valuestring))continue;
+        bool valid=id->valuestring[0];for(const char *c=id->valuestring;*c;c++)if(!((*c>='a'&&*c<='z')||(*c>='A'&&*c<='Z')||(*c>='0'&&*c<='9')||*c=='_'||*c=='-'))valid=false;
+        if(!valid){continue;}
+        strcpy(voice_rooms[voice_count].id,id->valuestring);strcpy(voice_rooms[voice_count++].name,name->valuestring);
+    }}
+    cJSON_Delete(response);if(!voice_count){set_status("暂无对讲房间，请在网页勾选此设备");return;}
+    voice_index=0;voice_mode=true;set_status("对讲实时传输，不保存录音");render();
+    if(pl_voice_start(&saved.config,voice_rooms[voice_index].id)!=ESP_OK)set_status("对讲启动失败，可退出后重试");
 }
 static void check_update(bool interactive) {
     if (!pl_ota_available()) { if(interactive)set_status("当前分区不支持 OTA，需要有线迁移"); return; }
@@ -609,9 +666,10 @@ void app_main(void) {
     lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_text_font(screen, &pocketlink_font_14, 0);
     lv_obj_set_style_bg_color(screen, lv_color_hex(0xf1f6f3), 0);
-    title = lv_label_create(screen); lv_obj_set_pos(title, 10, 8); lv_obj_set_width(title, 152);
+    title = lv_label_create(screen); lv_obj_set_pos(title, 10, 8); lv_obj_set_width(title, 104);
     lv_obj_set_height(title, 18);
     lv_label_set_long_mode(title, LV_LABEL_LONG_MODE_DOTS);
+    clock_label=lv_label_create(screen);lv_obj_set_pos(clock_label,118,8);lv_obj_set_width(clock_label,52);lv_label_set_text(clock_label,"--:--");assert(lv_timer_create(clock_tick,1000,NULL));
     battery_label = lv_label_create(screen); lv_obj_set_pos(battery_label, 172, 8); lv_obj_set_width(battery_label, 58);
     lv_obj_set_style_text_align(battery_label, LV_TEXT_ALIGN_RIGHT, 0);
     lv_label_set_text(battery_label, "--%");
@@ -622,6 +680,8 @@ void app_main(void) {
     lv_obj_remove_flag(message_box, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_pad_all(message_box, 10, 0);
     lv_obj_set_style_border_width(message_box, 1, 0);
+    sender_label=lv_label_create(message_box);lv_obj_set_size(sender_label,206,18);lv_label_set_long_mode(sender_label,LV_LABEL_LONG_MODE_DOTS);lv_label_set_text(sender_label,"");
+    sent_label=lv_label_create(message_box);lv_obj_set_pos(sent_label,0,18);lv_obj_set_width(sent_label,206);lv_label_set_text(sent_label,"");
     message_label = lv_label_create(message_box); lv_obj_set_width(message_label, 206);
     lv_obj_set_style_text_line_space(message_label, 0, 0);
     lv_obj_set_style_text_letter_space(message_label, 0, 0);
@@ -635,6 +695,7 @@ void app_main(void) {
     lv_label_set_text(loading_label, "处理中，请稍后 |");
     lv_obj_add_flag(loading_label, LV_OBJ_FLAG_HIDDEN);
     assert(lv_timer_create(loading_tick, 160, NULL));
+    assert(lv_timer_create(voice_tick,250,NULL));
     bsp_lvgl_unlock();
     battery_ready = bsp_battery_init() == ESP_OK;
     update_battery();
@@ -653,6 +714,8 @@ void app_main(void) {
         memset(&saved, 0, sizeof(saved)); saved.config.version = PL_CONFIG_VERSION;
         strcpy(saved.config.host, "pocketlink.mcloc.cn"); saved.config.port = 443;
     }
+    size_t meta_size=sizeof(inbox_meta);
+    if(nvs_get_blob(storage,"inbox_meta",&inbox_meta,&meta_size)!=ESP_OK||meta_size!=sizeof(inbox_meta)||!memchr(inbox_meta.sender,0,sizeof(inbox_meta.sender))||!pl_utf8_valid(inbox_meta.sender)||inbox_meta.sent_at<0||inbox_meta.sent_at>4102444800LL)memset(&inbox_meta,0,sizeof(inbox_meta));
     ESP_ERROR_CHECK(esp_netif_init()); ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_t *station = esp_netif_create_default_wifi_sta();
     esp_netif_t *ap = esp_netif_create_default_wifi_ap(); assert(station && ap);
@@ -688,10 +751,14 @@ void app_main(void) {
                     set_status("已退出配网，原配置保留");
                 }
             } else if (cmd.kind == CMD_KEY) {
-                if (ota_prompt) {
+                if(voice_mode){
+                    if(cmd.key==BSP_BTN_DOWN&&cmd.event==BSP_BTN_LONG){pl_voice_stop();voice_mode=false;set_status("已退出对讲");render();}
+                    else if(cmd.event==BSP_BTN_CLICK&&(cmd.key==BSP_BTN_UP||cmd.key==BSP_BTN_DOWN)){pl_voice_stop();voice_index=(voice_index+voice_count+(cmd.key==BSP_BTN_UP?-1:1))%voice_count;pl_voice_start(&saved.config,voice_rooms[voice_index].id);render();}
+                } else if (ota_prompt) {
                     if(cmd.key==BSP_BTN_DOWN && cmd.event==BSP_BTN_LONG)install_update();
                     else if(cmd.key==BSP_BTN_OK && cmd.event==BSP_BTN_CLICK){ota_prompt=false;render();set_status("已取消升级，可长按上键再次检查");}
-                } else if(!ap_active && cmd.key==BSP_BTN_UP && cmd.event==BSP_BTN_LONG)check_update(true);
+                } else if(!ap_active && cmd.key==BSP_BTN_DOWN && cmd.event==BSP_BTN_LONG)enter_voice();
+                else if(!ap_active && cmd.key==BSP_BTN_UP && cmd.event==BSP_BTN_LONG)check_update(true);
                 else if (cmd.key == BSP_BTN_OK && cmd.event == BSP_BTN_LONG) start_portal();
                 else if (cmd.event == BSP_BTN_CLICK && ap_active && cmd.key == BSP_BTN_OK) { url_qr = !url_qr; render(); }
                 else if (cmd.event == BSP_BTN_CLICK && !ap_active && saved.inbox.id && cmd.key == BSP_BTN_OK) {
@@ -722,11 +789,11 @@ void app_main(void) {
         if (!ap_active && saved.config.ssid[0] && !(xEventGroupGetBits(events) & LINK_UP) && now >= next_reconnect && background_allowed()) {
             set_status("网络已断开，正在重连"); connect_wifi(&saved.config); next_reconnect = esp_timer_get_time() + 15000000;
         }
-        if (!ap_active && !ota_prompt && (xEventGroupGetBits(events) & LINK_UP) && now >= next_poll && background_allowed()) {
+        if (!voice_mode && !ap_active && !ota_prompt && (xEventGroupGetBits(events) & LINK_UP) && now >= next_poll && background_allowed()) {
             if (clock_ready()) receive_text();
             next_poll = esp_timer_get_time() + 5000000;
         }
-        if(!ap_active && !ota_prompt && !saved.inbox.id && (xEventGroupGetBits(events)&LINK_UP) && now>=next_update_check && background_allowed()){
+        if(!voice_mode && !ap_active && !ota_prompt && !saved.inbox.id && (xEventGroupGetBits(events)&LINK_UP) && now>=next_update_check && background_allowed()){
             check_update(false);next_update_check=esp_timer_get_time()+1800000000LL;
         }
     }

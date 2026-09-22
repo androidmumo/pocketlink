@@ -15,3 +15,5 @@ licenses apply. No new project-wide license grant is implied by these notices.
 WebSocket uses `github.com/coder/websocket` v1.8.15 (ISC license), pinned in the Go module files.
 
 The PocketLink bitmap font is generated from Adobe Source Han Sans 2.004R, `SourceHanSansSC-Regular.otf`, under [SIL OFL 1.1](../firmware/components/pocketlink_font/LICENSE.txt). The official source URL and SHA256 are pinned in `tools/generate-font.py`; the converter is pinned to `lv_font_conv@1.5.3`. The derivative is named `pocketlink_font_14` and covers ASCII, 6,763 GB2312 Han characters and UI text, not all Unicode or emoji. Regenerate with `python3 tools/generate-font.py` (requires Node.js/npm and network). Ordinary builds use committed generated data without downloading the font.
+
+Device voice uses Espressif `esp_websocket_client` 1.6.1 (Apache-2.0), with version/hash in firmware lockfiles. BSP adaptations add release events and pin LVGL 9.5.0; see upstream.json.

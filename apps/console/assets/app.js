@@ -16,7 +16,7 @@ function status(text) { clearTimeout(noticeTimer); $("status").textContent = tex
 function loggedIn(yes, identity) {
   if(yes || currentUser!==null) sessionEpoch++;
   if (identity) currentUser = {...identity.user, role:identity.role};
-  if (!yes) { currentUser=null; deviceRows=[]; roomRows=[]; $("invitation-code").textContent=""; $("invitation-result").hidden=true; $("invitation-list").replaceChildren(); }
+  if (!yes) { globalThis.PocketVoice?.disconnect();$("room-action-panel").hidden=true;$("room-invitation-list").replaceChildren();$("room-invitation-code").textContent="";$("room-invitation-result").hidden=true; currentUser=null; deviceRows=[]; roomRows=[]; $("invitation-code").textContent=""; $("invitation-result").hidden=true; $("invitation-list").replaceChildren(); }
   if (yes && currentUser) {
     const admin=currentUser.role==="admin";
     $("account-name").textContent=currentUser.username;
@@ -24,7 +24,7 @@ function loggedIn(yes, identity) {
     $("devices-nav-label").textContent=admin?"设备管理":"我的设备";
     $("avatar").textContent=currentUser.username[0].toUpperCase();
     $("welcome-title").textContent="你好，"+currentUser.username;
-    $("nav-firmware").hidden=!admin; $("create-invitation").hidden=!admin;
+    $("nav-firmware").hidden=!admin; $("nav-invitations").hidden=!admin; $("create-invitation").hidden=!admin;
     showView("overview");
   }
   $("login").hidden = yes; $("workspace").hidden = !yes;
@@ -83,12 +83,14 @@ async function refreshRooms() {
 }
 async function loadRoom() {
   const id=selectedRoom(); const epoch=++roomEpoch;
+  globalThis.PocketVoice?.roomChanged(id);
+  $("invite-room").disabled=true;$("room-action-panel").hidden=true;$("room-invitation-code").textContent="";$("room-invitation-result").hidden=true;
   $("room-detail").hidden=!id; $("room-empty").hidden=!!id; $("message-history").replaceChildren(); $("room-members").replaceChildren(); historyCursor=0;
   if (!id) return;
-  const room=roomRows.find(r=>r.id===id); const archived=room.archived_at!==null;
+  const room=roomRows.find(r=>r.id===id); const archived=room.archived_at!==null; $("voice-panel").hidden=archived;
   const owner=currentUser && (currentUser.role==="admin"||room.owner_id===currentUser.id);
   $("message-form").hidden=archived; $("archive-room").disabled=archived; $("archive-room").hidden=!owner;
-  $("invite-room").hidden=!owner||archived; $("leave-room").hidden=owner||archived;
+  $("invite-room").disabled=!owner||archived;$("invite-room").title=owner?"邀请朋友加入当前房间":"仅房主可以邀请朋友";globalThis.PocketVoice?.setRoom(id,!archived); $("leave-room").hidden=owner||archived;
   await loadRoomUsers(id,epoch,owner);
   if(epoch!==roomEpoch)return;
   const {device_ids}=await api("rooms/"+encodeURIComponent(id)+"/members");
@@ -166,9 +168,10 @@ $("firmware-form").onsubmit=event=>{event.preventDefault();perform(event.submitt
 
 (async()=>{try {const identity=await api("auth/me"); loggedIn(true,identity); await refresh();} catch(error) {if(error.stale)return; loggedIn(false); if (!error.message.startsWith("登录")) status(error.message);}})();
 
-const viewLabels={overview:["概览","设备相连，消息随行。"],devices:["我的设备","让每一台设备，都有归属。"],rooms:["房间与消息","与朋友共享一个频道。"],invitations:["邀请码","连接，从一份邀请开始。"],firmware:["固件管理","为设备带来新的能力。"]};
+const viewLabels={overview:["概览","设备相连，消息随行。"],devices:["我的设备","让每一台设备，都有归属。"],rooms:["房间与消息","与朋友共享一个频道。"],invitations:["注册邀请码","邀请朋友注册 PocketLink。"],firmware:["固件管理","为设备带来新的能力。"]};
 function showView(name){
- if(name==="firmware"&&currentUser?.role!=="admin")name="overview";
+ if((name==="firmware"||name==="invitations")&&currentUser?.role!=="admin")name="overview";
+ if(name!=="rooms")globalThis.PocketVoice?.disconnect();
  currentView=name;
  for(const key of Object.keys(viewLabels)){$("view-"+key).hidden=key!==name;$("nav-"+key).className="nav-item"+(key===name?" active":"");}
  $("page-name").textContent=viewLabels[name][0];$("page-title").textContent=viewLabels[name][1];
@@ -195,28 +198,43 @@ $("register-form").onsubmit=event=>{event.preventDefault();perform(event.submitt
 async function copyCode(id){const value=$(id).textContent;if(!value||value.includes("过期"))throw new Error("请先生成有效邀请码。");try{await navigator.clipboard.writeText(value);status("已复制，请私下分享给对应的人。");}catch{throw new Error("无法自动复制，请长按或选中邀请码手动复制。");}}
 $("copy-pair").onclick=()=>perform($("copy-pair"),()=>copyCode("pair-code"));
 $("copy-invitation").onclick=()=>perform($("copy-invitation"),()=>copyCode("invitation-code"));
-async function createInvitation(kind,room){
- const data=await api("invitations","POST",{kind,room_id:room||""});
- $("invitation-result").hidden=false;$("invitation-title").textContent=kind==="registration"?"账号注册邀请码":"房间加入邀请码";
- $("invitation-code").textContent=data.code;$("invitation-expiry").textContent="有效至 "+new Date(data.expires_at*1000).toLocaleString()+" · 一次有效，请及时复制保存";
- await refreshInvitations();showView("invitations");status("邀请码已生成，有效期内可在下方再次查看和复制。");
+function openRoomAction(action){
+ $("room-action-panel").hidden=false;$("room-form").hidden=action!=="create";$("join-form").hidden=action!=="join";$("room-invite-panel").hidden=action!=="invite";
+ $("room-action-title").textContent=action==="create"?"创建新的房间":action==="join"?"用邀请码加入房间":"邀请朋友加入 · "+(roomRows.find(r=>r.id===selectedRoom())?.name||"");
+ if(action==="create")$("room-name").focus();else if(action==="join")$("join-code").focus();
 }
+$("open-create-room").onclick=()=>openRoomAction("create");$("open-join-room").onclick=()=>openRoomAction("join");$("close-room-action").onclick=()=>{$("room-action-panel").hidden=true;};
+function displayInvitation(entry,code){
+ const prefix=entry.kind==="room"?"room-invitation":"invitation";
+ $(prefix+"-result").hidden=false;$(prefix+"-code").textContent=code;$(prefix+"-expiry").textContent="有效至 "+new Date(entry.expires_at*1000).toLocaleString()+" · 一次有效";
+ if(entry.kind==="registration")$("invitation-title").textContent="账号注册邀请码";
+}
+async function createInvitation(kind,room){
+ const epoch=roomEpoch;const data=await api("invitations","POST",{kind,room_id:room||""});
+ await refreshInvitations();if(kind==="room"&&epoch!==roomEpoch)return;
+ displayInvitation({...data,kind},data.code);if(kind==="registration")showView("invitations");status("邀请码已生成，可再次查看和复制。");
+}
+$("copy-room-invitation").onclick=()=>perform($("copy-room-invitation"),()=>copyCode("room-invitation-code"));
 $("create-invitation").onclick=()=>perform($("create-invitation"),()=>createInvitation("registration"));
-$("invite-room").onclick=()=>perform($("invite-room"),()=>createInvitation("room",selectedRoom()));
+$("invite-room").onclick=()=>perform($("invite-room"),async()=>{openRoomAction("invite");await refreshInvitations();});
+$("new-room-invitation").onclick=()=>perform($("new-room-invitation"),()=>createInvitation("room",selectedRoom()));
 async function refreshInvitations(){
- const {invitations}=await api("invitations");$("invitation-list").replaceChildren();
- if(!invitations.length){$("invitation-list").textContent="还没有生成过邀请码。";return;}
- for(const entry of invitations){
-  const li=document.createElement("li"),text=document.createElement("span");
-  const state=entry.revoked_at!==null?"已撤销":entry.used_at!==null?"已使用":entry.expires_at*1000<=Date.now()?"已过期":"待使用";
-  const room=roomRows.find(r=>r.id===entry.room_id);
-  text.textContent=(entry.kind==="registration"?"账号注册":("房间 · "+(room?.name||"已归档房间")))+" · "+state+" · "+new Date(entry.expires_at*1000).toLocaleDateString()+" 到期";li.append(text);
-  if(state==="待使用"){
-   if(entry.code_available){const view=document.createElement("button");view.className="secondary";view.textContent="查看 / 复制";
-    view.onclick=()=>perform(view,async()=>{const data=await api("invitations/"+entry.id+"/code");$("invitation-result").hidden=false;$("invitation-title").textContent=entry.kind==="registration"?"账号注册邀请码":"房间加入邀请码";$("invitation-code").textContent=data.code;$("invitation-expiry").textContent="有效至 "+new Date(entry.expires_at*1000).toLocaleString();$("copy-invitation").focus();status("邀请码已显示，可点击复制。");});li.append(view);
-   }else{const legacy=document.createElement("small");legacy.textContent="旧邀请码未保存原码；如已遗失，请撤销后重新生成。";li.append(legacy);}
-   const revoke=document.createElement("button");revoke.className="secondary";revoke.textContent="撤销";revoke.onclick=()=>perform(revoke,async()=>{await api("invitations/"+entry.id,"DELETE");await refreshInvitations();$("invitation-result").hidden=true;$("invitation-code").textContent="";status("邀请码已撤销。");});li.append(revoke);}
-  $("invitation-list").append(li);
+ const epoch=roomEpoch;const {invitations}=await api("invitations");if(epoch!==roomEpoch)return;
+ for(const kind of ["registration","room"]){
+  const prefix=kind==="room"?"room-invitation":"invitation",list=$(prefix+"-list");list.replaceChildren();
+  const entries=invitations.filter(e=>e.kind===kind&&(kind!=="room"||e.room_id===selectedRoom()));
+  if(!entries.length)list.textContent="还没有生成过邀请码。";
+  for(const entry of entries){
+   const li=document.createElement("li"),text=document.createElement("span");
+   const state=entry.revoked_at!==null?"已撤销":entry.used_at!==null?"已使用":entry.expires_at*1000<=Date.now()?"已过期":"待使用";
+   text.textContent=state+" · "+new Date(entry.expires_at*1000).toLocaleDateString()+" 到期";li.append(text);
+   if(state==="待使用"){
+    if(entry.code_available){const view=document.createElement("button");view.className="secondary";view.textContent="查看 / 复制";
+     view.onclick=()=>perform(view,async()=>{const data=await api("invitations/"+entry.id+"/code");if(kind==="room"&&epoch!==roomEpoch)return;displayInvitation(entry,data.code);$(kind==="room"?"copy-room-invitation":"copy-invitation").focus();});li.append(view);
+    }else{const legacy=document.createElement("small");legacy.textContent="旧邀请码未保存原码；如已遗失，请撤销后重新生成。";li.append(legacy);}
+    const revoke=document.createElement("button");revoke.className="secondary";revoke.textContent="撤销";revoke.onclick=()=>perform(revoke,async()=>{await api("invitations/"+entry.id,"DELETE");await refreshInvitations();if(kind==="room"&&epoch!==roomEpoch)return;$(prefix+"-result").hidden=true;$(prefix+"-code").textContent="";status("邀请码已撤销。");});li.append(revoke);
+   }list.append(li);
+  }
  }
 }
 $("join-form").onsubmit=event=>{event.preventDefault();perform(event.submitter,async()=>{

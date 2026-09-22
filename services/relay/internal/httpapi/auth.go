@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/androidmumo/pocketlink/services/relay/internal/store"
+	"github.com/androidmumo/pocketlink/services/relay/internal/voice"
 )
 
 const sessionCookie = "__Host-pocketlink"
@@ -38,6 +39,7 @@ type Auth struct {
 	messageAttempts    int
 	streams            map[string]*streamSession
 	stopping           bool
+	voice              *voice.Hub
 }
 
 // The bootstrap administrator retains its file-configured password.
@@ -54,7 +56,7 @@ func NewAuth(db *store.Store, origin, password string) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Auth{db: db, origin: origin, salt: salt, passwordHash: hash, sessions: map[string]session{}, verifying: make(chan struct{}, 1), streams: map[string]*streamSession{}}, nil
+	return &Auth{db: db, origin: origin, salt: salt, passwordHash: hash, sessions: map[string]session{}, verifying: make(chan struct{}, 1), streams: map[string]*streamSession{}, voice: voice.New()}, nil
 }
 func secret() string {
 	b := make([]byte, 32)
@@ -117,7 +119,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, 403, "device_endpoint")
 		return
 	}
-	if a.accountHTTP(w, r) || a.firmwareHTTP(w, r) || a.messageHTTP(w, r) {
+	if a.voiceHTTP(w, r) || a.accountHTTP(w, r) || a.firmwareHTTP(w, r) || a.messageHTTP(w, r) {
 		return
 	}
 	switch {

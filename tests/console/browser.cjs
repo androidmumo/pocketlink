@@ -26,7 +26,7 @@ const output=process.env.POCKETLINK_SCREENSHOTS||'/private/tmp/pocketlink-ui-tes
  await page.fill('#password','local-browser-test-password');await page.click('#login-form button');await page.waitForSelector('#workspace:not([hidden])');assert(await page.locator('#nav-firmware').isHidden());
  await page.click('#nav-devices');await page.fill('#device-name','口袋一号');await page.click('#pair-form button');await page.waitForSelector('#pair-result:not([hidden])');
  const pairingCode=await page.textContent('#pair-code');const response=await context.request.post(origin+'/api/v1/device/pair',{data:{code:pairingCode,sn:'browser-device-'+Date.now()}});assert.equal(response.status(),201);const device=await response.json();
- await page.click('#refresh');await waitText('#devices','口袋一号');await page.click('#nav-rooms');await page.fill('#room-name','周末出游');await page.click('#room-form button');await page.waitForSelector('#room-detail:not([hidden])');
+ await page.click('#refresh');await waitText('#devices','口袋一号');await page.click('#nav-rooms');await page.click('#open-create-room');await page.fill('#room-name','周末出游');await page.click('#room-form button');await page.waitForSelector('#room-detail:not([hidden])');
 
  assert(await page.locator('#room-select').isHidden());await page.click('#room-picker');await page.waitForSelector('#room-options:not([hidden])');await page.keyboard.press('Home');await page.keyboard.press('Enter');await page.waitForSelector('#room-detail[hidden]',{state:'attached'});
  await page.focus('#room-picker');await page.keyboard.press('ArrowDown');await page.keyboard.press('End');await page.keyboard.press('Enter');await page.waitForSelector('#room-detail:not([hidden])');
@@ -37,7 +37,7 @@ const output=process.env.POCKETLINK_SCREENSHOTS||'/private/tmp/pocketlink-ui-tes
  const ack=await context.request.post(origin+'/api/v1/device/ack',{headers:{Authorization:'Bearer '+device.credential},data:{message_id:msg.id,state:'read'}});assert.equal(ack.status(),200);
  await page.locator('.message-item button').first().click();await waitText('#message-history','已读');
  await page.screenshot({path:output+'/rooms-desktop.png',fullPage:true});
- await page.click('#invite-room');await page.waitForSelector('#invitation-result:not([hidden])');const roomCode=await page.textContent('#invitation-code');assert.equal(roomCode.length,43);assert(await page.locator('#create-invitation').isHidden());
+ await page.click('#invite-room');await page.click('#new-room-invitation');await page.waitForSelector('#room-invitation-result:not([hidden])');const roomCode=await page.textContent('#room-invitation-code');assert.equal(roomCode.length,43);assert(await page.locator('#create-invitation').isHidden());
  await page.setViewportSize({width:390,height:844});await page.click('#nav-rooms');await page.click('#room-picker');await page.waitForSelector('#room-options:not([hidden])');const pickerBounds=await page.locator('#room-options').boundingBox();assert(pickerBounds.x>=0&&pickerBounds.x+pickerBounds.width<=390&&pickerBounds.y>=0&&pickerBounds.y+pickerBounds.height<=844);await page.locator('#room-options [role=option]').last().click();await page.screenshot({path:output+'/rooms-mobile.png',fullPage:true});
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'mobile overflow');
  await page.click('#logout');await page.waitForSelector('#login:not([hidden])');await page.screenshot({path:output+'/login-mobile.png',fullPage:true});
@@ -49,7 +49,7 @@ const output=process.env.POCKETLINK_SCREENSHOTS||'/private/tmp/pocketlink-ui-tes
  const issued=await adminContext.request.post(origin+'/api/v1/invitations',{headers:{Origin:origin},data:{kind:'registration'}});assert.equal(issued.status(),201);const secondCode=(await issued.json()).code;
  await adminContext.close();
  await page.click('#mode-register');await page.fill('#register-username','friend_'+Date.now());await page.fill('#register-password','local-browser-test-password');await page.fill('#register-confirm','local-browser-test-password');await page.fill('#registration-code',secondCode);await page.click('#register-form button');await waitText('#status','账号已创建');await page.fill('#password','local-browser-test-password');await page.click('#login-form button');await page.waitForSelector('#workspace:not([hidden])');
- await page.click('#nav-rooms');await page.fill('#join-code',roomCode);await page.click('#join-form button');await waitText('#status','已加入房间');assert(await page.locator('#archive-room').isHidden());assert(await page.locator('#invite-room').isHidden());assert.equal(await page.locator('.message-item').count(),0);
+ await page.click('#nav-rooms');await page.click('#open-join-room');await page.fill('#join-code',roomCode);await page.click('#join-form button');await waitText('#status','已加入房间');assert(await page.locator('#archive-room').isHidden());assert(await page.locator('#invite-room').isDisabled());assert.equal(await page.locator('.message-item').count(),0);
  page.once('dialog',d=>d.accept());await page.click('#leave-room');await waitText('#status','已退出房间');assert(await page.locator('#room-detail').isHidden());
  assert.deepEqual(errors,[]);
  console.log('Browser: admin invite, registration, ordinary login, role UI, device pairing, room message/receipt, room invite, logout, desktop/mobile layout PASS');

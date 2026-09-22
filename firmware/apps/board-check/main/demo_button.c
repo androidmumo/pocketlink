@@ -70,6 +70,6 @@ void demo_button_exit(void) {
 
 void demo_button_key(bsp_btn_t btn, bsp_btn_ev_t ev) {
     char line[32];
-    snprintf(line, sizeof(line), "%s: %s", BTN_NAME[btn], EV_NAME[ev]);
+    snprintf(line, sizeof(line), "%s: %s", BTN_NAME[btn], (ev==BSP_BTN_RELEASE?"release":EV_NAME[ev]));
     log_push(line);
 }

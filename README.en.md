@@ -7,7 +7,7 @@ with future expansion into multiplayer games and other applications.
 
 **The console now supports invite registration, isolated user accounts, shared rooms and a responsive workspace.** See [accounts and invitations](docs/development/accounts.en.md).
 A new **P3 device development build** implements QR hotspot provisioning, HTTPS pairing
-text reception and signed OTA, pending physical-device acceptance. Voice is not implemented.
+text reception and signed OTA, pending physical-device acceptance. Browser/device half-duplex intercom is available as a development build; physical audio quality and latency await acceptance.
 Use `pocketlink` firmware for device features; `board-check` remains hardware diagnostics.
 [Device provisioning and flashing guide](docs/development/device-provisioning.en.md)
 
@@ -245,7 +245,7 @@ disk failure. No automatic backup or cleanup policy is configured; schedule it a
 | 409 | Check code/device/retained-serial limits; expired codes are pruned when creating another code |
 | Cannot read password/database | Check UID/GID, permissions and mounts; do not open the whole site's permissions |
 | Expired/used pairing code | Generate another; revoke first if the device exists but its response was lost |
-| Missing device text/PTT controls | Server text transport is implemented; device firmware and audio remain pending |
+| Missing device text/PTT controls | Initial installation requires USB; hold Down in the new firmware to enter intercom after adding the device to a room |
 
 ## Local development and repository layout
 
@@ -300,3 +300,9 @@ A recovery key is automatically stored beside the database with the `.invitation
 
 
 The custom room picker supports arrow keys, Enter and Escape. New active invitations can be viewed and copied again; lost legacy codes must be revoked and replaced. The release library shows upload time and latest publication time in the browser time zone. Historical missing publication dates display “Not recorded”, never the upload time. Repeating publication of the active release preserves its timestamp; withdrawal retains it, and republication updates it.
+
+## Intercom, message details and room actions
+
+The half-duplex development implementation supports browser and device endpoints: hold to speak, release to listen. Long-Down enters/exits device intercom and short Up/Down switches rooms; text polling pauses meanwhile. Messages show sender and send time; the top bar shows Beijing time to the minute.
+
+Create, Join and Invite actions share the room page top area. Room invitations stay inside their room; registration invitations are administrator-only. Mobile page zoom is disabled. See the [intercom guide](docs/development/voice.en.md) for steps, protocol and limits. Actual audio quality and latency need device acceptance.

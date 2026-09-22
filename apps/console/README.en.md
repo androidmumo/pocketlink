@@ -22,3 +22,5 @@ The responsive workspace includes overview, devices, rooms/messages, invitations
 Message history is capped at 420px and half the viewport height. Long histories scroll internally while the composer stays outside. The history region supports keyboard focus for scrolling.
 
 The custom room picker supports touch, arrow keys, Enter and Escape. Active new invitations can be viewed/copied again; lost legacy codes require revocation and replacement. The library displays upload and latest publication dates, explicitly marking missing historical dates. See [account storage](../../docs/development/accounts.en.md) for recovery-key backups.
+
+See the [intercom guide](../../docs/development/voice.en.md) for room actions, separate invitations and browser voice. Audio browser tests need a disposable HTTPS proxy with WebSocket Upgrade forwarding.

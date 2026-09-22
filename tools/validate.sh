@@ -8,6 +8,9 @@ static() {
     python3 tools/check-repo.py
     node --check apps/console/assets/app.js
     node --check apps/console/assets/room-picker.js
+    node --check apps/console/assets/voice.js
+    node --check apps/console/assets/voice-worklet.js
+    node --check apps/console/assets/mobile.js
     test -z "$(gofmt -l apps/console/*.go)"
     scratch="$(mktemp -d "${TMPDIR:-/tmp}/pocketlink-check.XXXXXX")"
     trap 'rm -rf -- "${scratch}"' EXIT
@@ -17,7 +20,7 @@ static() {
     "${scratch}/test-ui"
     python3 tests/firmware/test_verify_firmware.py
     python3 tests/firmware/test_font_coverage.py
-    for suite in config inbox dns portal_request pages activity; do
+    for suite in config inbox dns portal_request pages activity ptt; do
         cc -std=c11 -Wall -Wextra -Werror -Ifirmware/components/pocketlink_config \
             "tests/provisioning/test_${suite}.c" firmware/components/pocketlink_config/*.c \
             -o "${scratch}/test-${suite}"
@@ -29,6 +32,7 @@ static() {
     node tests/provisioning/test_portal.cjs
     node tests/ota/test_console.cjs
     node tests/console/test_sessions.cjs
+    node tests/voice/test_worklet.cjs
     (
         cd services/relay
         test -z "$(gofmt -l cmd internal)"

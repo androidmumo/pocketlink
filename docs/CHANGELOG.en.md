@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Add device sender/send time and Beijing minute clock; unify room actions, separate registration/room invitations and disable mobile page zoom. Add development half-duplex WSS PCM intercom, floor/permission checks, browser microphone and device intercom mode; physical audio and latency acceptance remain pending.
+
 - Remove duplicate provisioning copy from the empty inbox; add a custom room picker, encrypted invitation recovery with view/copy, and upload/latest publication dates. Migration 006 requires backing up the recovery key with the data directory.
 
 - Keep background polling, battery reads, reconnects and update checks out of interactive loading/locking. Show a single-line wait message with a trailing spinner for manual work, and reject stale keys after message/view changes.

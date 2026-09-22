@@ -56,3 +56,5 @@ other pending messages remain on the server. See [device design](../development/
 P3 has not passed two-device acceptance and is not a completed milestone.
 
 Signed OTA source and usage (device acceptance pending): [OTA](../development/firmware-ota.en.md)
+
+P4 half-duplex intercom is implemented as a development build with dedicated browser/device controls. Hold Down on the device inbox to enter, then hold OK to speak. Host and synthetic audio tests pass; physical audio quality, latency and two-device acceptance remain pending. See [intercom](../development/voice.en.md).
