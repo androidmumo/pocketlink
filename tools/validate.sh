@@ -6,6 +6,8 @@ source tools/env.sh
 static() {
     command -v shellcheck >/dev/null 2>&1 || { echo "ERROR: shellcheck missing; see docs/development/setup.md" >&2; return 1; }
     python3 tools/check-repo.py
+    python3 tests/releases/test_bundle.py
+    python3 tests/releases/test_publish.py
     node --check apps/console/assets/app.js
     node --check apps/console/assets/room-picker.js
     node --check apps/console/assets/voice.js

@@ -31,11 +31,13 @@ jobs:
           ./tools/validate.sh --firmware
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: unsigned-application
-          path: dist/firmware/pocketlink/pocketlink-ota.bin
+          name: unsigned-firmware
+          path: dist/firmware/pocketlink/*.bin
           if-no-files-found: error
           retention-days: 1
   sign:
+    permissions:
+      contents: write
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -51,7 +53,7 @@ jobs:
           ./tools/validate.sh --static
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: unsigned-application
+          name: unsigned-firmware
           path: dist/unsigned
       - name: Sign package
         env:
@@ -69,11 +71,17 @@ jobs:
           unset SIGNING_KEY
           cd services/relay
           go run ./cmd/fwtool -key "$signing_file" -image ../../dist/unsigned/pocketlink-ota.bin -version "$RELEASE_VERSION" -sequence "$RELEASE_SEQUENCE" -out ../../dist/signed
+          cp ../../dist/unsigned/FoloToy-AI-Passport-full.bin ../../dist/signed/pocketlink-full.bin
           cd ../../dist/signed
-          sha256sum manifest.json pocketlink-ota.bin > SHA256SUMS
+          sha256sum pocketlink-full.bin pocketlink-ota.bin manifest.json > SHA256SUMS
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: signed-pocketlink-${{ github.run_id }}
           path: dist/signed/
           if-no-files-found: error
           retention-days: 30
+      - name: Verify and publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: python3 tools/publish-release.py dist/signed --version "$RELEASE_VERSION" --source "$GITHUB_SHA"

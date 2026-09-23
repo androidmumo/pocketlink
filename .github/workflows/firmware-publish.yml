@@ -1,0 +1,27 @@
+name: Publish verified firmware bundle
+on:
+  push:
+    tags: ['firmware/pocketlink/v*']
+permissions:
+  contents: read
+concurrency:
+  group: firmware-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Verify and publish preserved bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version="${RELEASE_TAG#firmware/pocketlink/v}"
+          [[ "$version" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$ ]]
+          python3 tools/check-repo.py
+          source_commit="$(cat "firmware/releases/$version/source.txt")"
+          python3 tools/publish-release.py "firmware/releases/$version" --version "$version" --source "$source_commit"

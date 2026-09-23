@@ -2,6 +2,8 @@
 
 # Changelog
 
+- Split documentation into simple device/Docker guides and a technical reference; provide the 0.5.0 full installation image and signed OTA files.
+
 ## Unreleased
 
 - Add device sender/send time and Beijing minute clock; unify room actions, separate registration/room invitations and disable mobile page zoom. Add development half-duplex WSS PCM intercom, floor/permission checks, browser microphone and device intercom mode; physical audio and latency acceptance remain pending.
