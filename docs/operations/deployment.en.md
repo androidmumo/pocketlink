@@ -58,8 +58,8 @@ production pulling are distinct permissions. CI performs no production updates.
 ## Current trial environment (upgraded and verified 2026-09-21)
 
 - URL: `https://pocketlink.mcloc.cn`, proxied by 1Panel to `127.0.0.1:3002`.
-- Application commit: `78a53484c3ac57fe986276989bae8332e695950f`.
-- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:fe87acbda7190405d0475c2ee781b714273f370b571ce133f2718db46a3f67d1`.
+- Application commit: `b07f03a9fda4660a5355bdb9b4befc0a8811f0fc`.
+- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:ac2e12e8d191fbfc179335a61df0f24f1cf10df67a3e90eb33a4268cc9c3829a`.
 - Active configuration: `/opt/pocketlink/compose.yaml`, `compose.auth.yaml` and `.env`.
 - Persistent files live under `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`:
   `data/` holds SQLite, `secrets/admin_password` the administrator secret and `backups/` consistent backups.
@@ -106,3 +106,9 @@ On 2026-09-21, deployed the custom room picker, encrypted invitation recovery an
 Deployed source `78a5348`. CI [35703429952](https://github.com/androidmumo/pocketlink/actions/runs/35703429952) passed host checks, firmware builds, amd64/arm64 container smoke tests and image publication. Backup `backups/before-intercom-20260922T082059Z.tar.gz` includes all data and configuration; extracted SQLite integrity checks passed. No database migration was introduced. Container health, retained data counts, key permissions, six UI asset hashes, HTTPS APIs and the WSS subprotocol handshake through the production proxy passed. The verification connection sent no production audio or message; its test invitation was revoked. Other containers retained their start times and restart counts.
 
 The listener remains `127.0.0.1:3002` with the same data path, no new UDP port and no shared-proxy restart. OTA 0.5.0 is published and requires manual confirmation on the device. The user chose publication first and deferred physical acceptance. Registration invitations remain on the administrator page; room invitations are in the selected room's Invite friends action panel.
+
+## 2026-09-23 administrator user management deployment
+
+Deployed source `b07f03a`. CI [35826339327](https://github.com/androidmumo/pocketlink/actions/runs/35826339327) passed host, firmware and both Docker architecture checks. Backup `backups/before-user-management-20260923T063232Z.tar.gz` contains complete data, secrets and deployment configuration; extracted SQLite integrity passed. Migration 007, retained user/business counts, the file-based administrator password boundary, invitation key permissions and container health were verified. User listing, HTTPS login/logout, WSS handshake and six deployed asset hashes passed. No production account was disabled or reset, and no test user was created. Other containers retained their start times and restart counts.
+
+Administrators can search users, inspect registration dates and active device/owned-room counts, disable/enable, force logout and reset ordinary passwords. Permanent deletion is not provided; the built-in administrator remains protected. See [account management](../development/accounts.en.md). Rollback requires the matching pre-migration database and configuration, not only the old image. Firmware and OTA remain 0.5.0; device upgrades are unnecessary.

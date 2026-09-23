@@ -47,8 +47,8 @@ GITHUB_TOKEN 发布权限与生产拉取权限不同。CI 不更新生产。
 ## 当前体验环境（2026-09-21 升级并复核）
 
 - 地址：`https://pocketlink.mcloc.cn`，1Panel 代理到 `127.0.0.1:3002`。
-- 应用版本：`78a53484c3ac57fe986276989bae8332e695950f`。
-- 镜像：`ghcr.io/androidmumo/pocketlink-relay@sha256:fe87acbda7190405d0475c2ee781b714273f370b571ce133f2718db46a3f67d1`。
+- 应用版本：`b07f03a9fda4660a5355bdb9b4befc0a8811f0fc`。
+- 镜像：`ghcr.io/androidmumo/pocketlink-relay@sha256:ac2e12e8d191fbfc179335a61df0f24f1cf10df67a3e90eb33a4268cc9c3829a`。
 - 生效配置：`/opt/pocketlink/compose.yaml`、`compose.auth.yaml` 和 `.env`。
 - 所有持久化文件位于 `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`：
   `data/` 为 SQLite，`secrets/admin_password` 为管理密码，`backups/` 为一致性备份。
@@ -92,3 +92,9 @@ WebSocket 收信、重连补发和回执已通过主机与 CI 测试；真实代
 部署源码 `78a5348`，CI [35703429952](https://github.com/androidmumo/pocketlink/actions/runs/35703429952) 的主机、固件、amd64/arm64 容器启动测试及镜像发布全部通过。升级前备份 `backups/before-intercom-20260922T082059Z.tar.gz` 包含完整数据和配置，解压后的 SQLite 完整性检查通过；本次无数据库迁移。容器健康、原数据数量、密钥权限、六份网页资源哈希、HTTPS 接口和真实代理后的 WSS 子协议握手均通过。只建立验证连接，没有发送生产音频或消息；验证邀请码已撤销，其他容器启动时间及重启次数未变。
 
 端口保持 `127.0.0.1:3002`，数据路径保持不变，无新增 UDP 端口或共享代理重启。OTA 0.5.0 已发布、需设备手动确认安装；用户选择先发布，真机验收待方便时进行。注册邀请码在管理员页面，房间邀请码在当前房间的“邀请朋友”操作区；不要混用。
+
+## 2026-09-23 管理员用户管理部署
+
+已部署源码 `b07f03a`，CI [35826339327](https://github.com/androidmumo/pocketlink/actions/runs/35826339327) 的主机、固件和两种架构 Docker 检查通过。备份 `backups/before-user-management-20260923T063232Z.tar.gz` 包含完整 data、secrets 和部署配置；解压后的 SQLite 完整性检查通过。迁移 007、原账号及业务记录数量、管理员文件密码边界、邀请码密钥权限和容器健康均已核对。管理员用户列表、HTTPS 登录/退出、WSS 握手及六份线上资源哈希验证通过。线上未禁用账号、重置密码或创建测试用户。其他容器启动时间和重启次数未变。
+
+管理员可搜索用户，查看注册时间及有效设备/自建房间数量，禁用/恢复、强制退出或重置普通用户密码；不提供永久删除，内置管理员不可修改。完整操作边界见[账号管理](../development/accounts.md)。回退本次迁移必须恢复匹配的升级前数据库和配置，不能只切回旧镜像。固件和 OTA 通道保持 0.5.0，无需设备升级。

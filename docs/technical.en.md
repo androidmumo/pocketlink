@@ -29,7 +29,7 @@ Open **[PocketLink](https://pocketlink.mcloc.cn)**. The following records the de
 | Database | `data/relay.db` under that root, plus runtime SQLite WAL files |
 | Administrator password | `secrets/admin_password` under that root |
 | Backups | `backups/` under that root; no scheduled backup currently exists |
-| Application commit | `78a53484c3ac57fe986276989bae8332e695950f` |
+| Application commit | `b07f03a9fda4660a5355bdb9b4befc0a8811f0fc` |
 | Resource limits | 192 MB memory, 0.5 CPU, 128 processes; non-root, read-only root filesystem |
 
 The image includes the web console; no separate frontend or MySQL deployment is needed.
@@ -90,7 +90,7 @@ test ! -e /opt/pocketlink
 test ! -e /opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
 git clone https://github.com/androidmumo/pocketlink.git /opt/pocketlink-src
 cd /opt/pocketlink-src
-git checkout 78a53484c3ac57fe986276989bae8332e695950f
+git checkout b07f03a9fda4660a5355bdb9b4befc0a8811f0fc
 install -d -m 700 /opt/pocketlink
 cp deploy/compose.yaml deploy/compose.auth.yaml /opt/pocketlink/
 base=/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink
@@ -108,11 +108,11 @@ PASSWORD
 ```
 
 Write the following to `/opt/pocketlink/.env` and set its permissions to `600`.
-The pinned digest comes from the [successful CI run](https://github.com/androidmumo/pocketlink/actions/runs/35703429952).
+The pinned digest comes from the [successful CI run](https://github.com/androidmumo/pocketlink/actions/runs/35826339327).
 Do not treat the floating `edge` tag as a fixed release.
 
 ```dotenv
-POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:fe87acbda7190405d0475c2ee781b714273f370b571ce133f2718db46a3f67d1
+POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:ac2e12e8d191fbfc179335a61df0f24f1cf10df67a3e90eb33a4268cc9c3829a
 POCKETLINK_HTTP_PORT=3002
 POCKETLINK_LOG_LEVEL=info
 POCKETLINK_PUBLIC_ORIGIN=https://pocketlink.mcloc.cn
