@@ -58,8 +58,8 @@ production pulling are distinct permissions. CI performs no production updates.
 ## Current trial environment (upgraded and verified 2026-09-21)
 
 - URL: `https://pocketlink.mcloc.cn`, proxied by 1Panel to `127.0.0.1:3002`.
-- Application commit: `b07f03a9fda4660a5355bdb9b4befc0a8811f0fc`.
-- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:ac2e12e8d191fbfc179335a61df0f24f1cf10df67a3e90eb33a4268cc9c3829a`.
+- Application commit: `1243e27b688d8e2a3b991d1b97d31269e300080a`.
+- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:ff711150690689b0bab273894ce2b8bece6e3fa4e4b9bb12fcabb226f1f93908`.
 - Active configuration: `/opt/pocketlink/compose.yaml`, `compose.auth.yaml` and `.env`.
 - Persistent files live under `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`:
   `data/` holds SQLite, `secrets/admin_password` the administrator secret and `backups/` consistent backups.
@@ -112,3 +112,7 @@ The listener remains `127.0.0.1:3002` with the same data path, no new UDP port a
 Deployed source `b07f03a`. CI [35826339327](https://github.com/androidmumo/pocketlink/actions/runs/35826339327) passed host, firmware and both Docker architecture checks. Backup `backups/before-user-management-20260923T063232Z.tar.gz` contains complete data, secrets and deployment configuration; extracted SQLite integrity passed. Migration 007, retained user/business counts, the file-based administrator password boundary, invitation key permissions and container health were verified. User listing, HTTPS login/logout, WSS handshake and six deployed asset hashes passed. No production account was disabled or reset, and no test user was created. Other containers retained their start times and restart counts.
 
 Administrators can search users, inspect registration dates and active device/owned-room counts, disable/enable, force logout and reset ordinary passwords. Permanent deletion is not provided; the built-in administrator remains protected. See [account management](../development/accounts.en.md). Rollback requires the matching pre-migration database and configuration, not only the old image. Firmware and OTA remain 0.5.0; device upgrades are unnecessary.
+
+## User management style fix (2026-09-23)
+
+Deployed `1243e27`: align sidebar text and show compact blue administrator, green active and red disabled badges. Desktop/mobile browser checks, user-management regression, the complete static gate and CI [35854733820](https://github.com/androidmumo/pocketlink/actions/runs/35854733820) passed. Backup `backups/before-user-badges-20260923T113810Z.tar.gz` was checked for SQLite integrity before deployment; the database remains at migration 007. Production login, user listing, WSS handshake and asset hashes passed; other containers were not restarted. Firmware is unchanged.
