@@ -2,6 +2,8 @@
 
 # Changelog
 
+- Align the user-management navigation font and show compact blue administrator, green active and red disabled badges.
+
 - Add administrator user management: search, status/resource counts, disable/enable, force logout and password reset. Disabled accounts lose device access; the administrator account is protected.
 
 - Split documentation into simple device/Docker guides and a technical reference; provide the 0.5.0 full installation image and signed OTA files.

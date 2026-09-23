@@ -260,7 +260,7 @@ function renderUsers(){
  if(!rows.length){const empty=document.createElement("li");empty.textContent="没有符合条件的用户。";$("user-list").append(empty);return;}
  for(const u of rows){
   const li=document.createElement("li");li.className="user-card";const details=document.createElement("div");details.className="user-details";
-  const title=document.createElement("strong");title.textContent=u.username;const badge=document.createElement("span");badge.className="pill";badge.textContent=u.id==="admin"?"管理员":u.disabled_at===null?"正常":"已禁用";
+  const title=document.createElement("strong");title.textContent=u.username;const badge=document.createElement("span");badge.className="pill user-badge user-badge--"+(u.id==="admin"?"admin":u.disabled_at===null?"enabled":"disabled");badge.textContent=u.id==="admin"?"管理员":u.disabled_at===null?"正常":"已禁用";
   const heading=document.createElement("div");heading.className="user-heading";heading.append(title,badge);
   const info=document.createElement("p");info.className="muted";info.textContent=`注册：${u.created_at?new Date(u.created_at*1000).toLocaleString():"系统内置"} · 有效设备 ${u.device_count} · 自建有效房间 ${u.room_count}`;details.append(heading,info);li.append(details);
   if(u.id==="admin"){const note=document.createElement("p");note.className="muted";note.textContent="密码由服务器文件配置，不可禁用或在此重置。";li.append(note);}
