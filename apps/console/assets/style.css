@@ -43,3 +43,5 @@ html{touch-action:pan-x pan-y}input,textarea{font-size:16px}
 #voice-talk{touch-action:none;user-select:none;-webkit-user-select:none;min-width:140px;padding:20px}
 #voice-talk[data-speaking=true]{background:#b74637}
 @media(max-width:700px){.room-action-buttons{gap:8px}.room-action-buttons button{min-width:0;padding:13px 8px;font-size:13px}.voice-panel{display:block}.voice-controls{margin-top:18px}.voice-controls button{flex:1}}
+
+.user-list .user-card{display:flex;flex-direction:column;align-items:stretch;gap:12px}.user-details{min-width:0}.user-heading,.user-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.user-heading strong{overflow-wrap:anywhere}.user-details p{margin:8px 0 0}.user-actions button{margin:0}.user-list .user-card>p{margin:0}#user-password-panel{margin-top:20px}#user-new-password{max-width:520px}

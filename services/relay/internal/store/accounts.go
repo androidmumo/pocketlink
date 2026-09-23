@@ -7,9 +7,11 @@ import (
 )
 
 type User struct {
-	ID        string `json:"id"`
-	Username  string `json:"username"`
-	CreatedAt int64  `json:"created_at"`
+	AuthVersion int64  `json:"-"`
+	DisabledAt  *int64 `json:"disabled_at"`
+	ID          string `json:"id"`
+	Username    string `json:"username"`
+	CreatedAt   int64  `json:"created_at"`
 }
 type Invitation struct {
 	ID            string  `json:"id"`
@@ -50,7 +52,7 @@ func (s *Store) roomAllowed(ctx context.Context, q queryer, room string, manage 
 func (s *Store) UserCredentials(ctx context.Context, username string) (User, []byte, []byte, error) {
 	var u User
 	var salt, hash []byte
-	e := s.db.QueryRowContext(ctx, "SELECT id,username,created_at,password_salt,password_hash FROM users WHERE username=? AND id<>'admin'", username).Scan(&u.ID, &u.Username, &u.CreatedAt, &salt, &hash)
+	e := s.db.QueryRowContext(ctx, "SELECT id,username,created_at,password_salt,password_hash,auth_version,disabled_at FROM users WHERE username=? AND id<>'admin' AND disabled_at IS NULL", username).Scan(&u.ID, &u.Username, &u.CreatedAt, &salt, &hash, &u.AuthVersion, &u.DisabledAt)
 	if errors.Is(e, sql.ErrNoRows) {
 		e = ErrDenied
 	}
@@ -58,7 +60,7 @@ func (s *Store) UserCredentials(ctx context.Context, username string) (User, []b
 }
 func (s *Store) User(ctx context.Context, id string) (User, error) {
 	var u User
-	e := s.db.QueryRowContext(ctx, "SELECT id,username,created_at FROM users WHERE id=?", id).Scan(&u.ID, &u.Username, &u.CreatedAt)
+	e := s.db.QueryRowContext(ctx, "SELECT id,username,created_at,auth_version,disabled_at FROM users WHERE id=?", id).Scan(&u.ID, &u.Username, &u.CreatedAt, &u.AuthVersion, &u.DisabledAt)
 	return u, e
 }
 func (s *Store) Register(ctx context.Context, id, username, code string, salt, hash []byte, now int64) (User, error) {
@@ -94,7 +96,7 @@ func (s *Store) Register(ctx context.Context, id, username, code string, salt, h
 	if _, e = tx.ExecContext(ctx, "UPDATE invitations SET used_at=?,used_by=?,encrypted_code=NULL WHERE id=?", now, id, invite); e != nil {
 		return User{}, e
 	}
-	return User{id, username, now}, tx.Commit()
+	return User{ID: id, Username: username, CreatedAt: now}, tx.Commit()
 }
 func (s *Store) CreateInvitation(ctx context.Context, id, hash, code, kind, room string, now int64) error {
 	tx, e := s.db.BeginTx(ctx, nil)

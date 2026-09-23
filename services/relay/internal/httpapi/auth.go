@@ -119,7 +119,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, 403, "device_endpoint")
 		return
 	}
-	if a.voiceHTTP(w, r) || a.accountHTTP(w, r) || a.firmwareHTTP(w, r) || a.messageHTTP(w, r) {
+	if a.userManagementHTTP(w, r) || a.voiceHTTP(w, r) || a.accountHTTP(w, r) || a.firmwareHTTP(w, r) || a.messageHTTP(w, r) {
 		return
 	}
 	switch {

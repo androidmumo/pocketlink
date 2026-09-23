@@ -2,6 +2,7 @@
 const $ = id => document.getElementById(id);
 let expiryTimer;
 let currentUser = null;
+let managedUsers=[],userListEpoch=0,userActionBusy=false,passwordUser=null;
 let sessionEpoch = 0;
 let authMode = "login";
 let currentView = "overview";
@@ -16,7 +17,7 @@ function status(text) { clearTimeout(noticeTimer); $("status").textContent = tex
 function loggedIn(yes, identity) {
   if(yes || currentUser!==null) sessionEpoch++;
   if (identity) currentUser = {...identity.user, role:identity.role};
-  if (!yes) { globalThis.PocketVoice?.disconnect();$("room-action-panel").hidden=true;$("room-invitation-list").replaceChildren();$("room-invitation-code").textContent="";$("room-invitation-result").hidden=true; currentUser=null; deviceRows=[]; roomRows=[]; $("invitation-code").textContent=""; $("invitation-result").hidden=true; $("invitation-list").replaceChildren(); }
+  if (!yes) { clearUserManagement(); globalThis.PocketVoice?.disconnect();$("room-action-panel").hidden=true;$("room-invitation-list").replaceChildren();$("room-invitation-code").textContent="";$("room-invitation-result").hidden=true; currentUser=null; deviceRows=[]; roomRows=[]; $("invitation-code").textContent=""; $("invitation-result").hidden=true; $("invitation-list").replaceChildren(); }
   if (yes && currentUser) {
     const admin=currentUser.role==="admin";
     $("account-name").textContent=currentUser.username;
@@ -24,7 +25,7 @@ function loggedIn(yes, identity) {
     $("devices-nav-label").textContent=admin?"设备管理":"我的设备";
     $("avatar").textContent=currentUser.username[0].toUpperCase();
     $("welcome-title").textContent="你好，"+currentUser.username;
-    $("nav-firmware").hidden=!admin; $("nav-invitations").hidden=!admin; $("create-invitation").hidden=!admin;
+    $("nav-users").hidden=!admin; $("nav-firmware").hidden=!admin; $("nav-invitations").hidden=!admin; $("create-invitation").hidden=!admin;
     showView("overview");
   }
   $("login").hidden = yes; $("workspace").hidden = !yes;
@@ -38,7 +39,7 @@ async function api(path, method = "GET", data) {
   if (!response.ok) {
     if (response.status === 401) loggedIn(false);
     const messages = {401:"登录已失效或凭证不正确，请重新登录。", 403:"没有执行此操作的权限，或页面来源不匹配。", 404:"内容不存在，或你已失去访问权限。", 429:"请求过于频繁，请稍后重试。", 409:"已达到配对或设备数量上限。", 503:"服务暂不可用，请稍后重试。"};
-    const codes = {admin_required:"此操作仅限管理员。",invalid_invitation:"邀请码无效、已使用或已过期。",invalid_registration:"用户名需为字母开头的 3–32 位字母、数字或下划线，密码至少 12 位。",username_unavailable:"该用户名不可用，请换一个。",empty_room:"房间没有有效成员，请先添加设备。", idempotency_conflict:"重试标识对应的消息内容不同，请刷新页面并核对历史。", capacity_reached:"已达到存储或数量上限。", invalid_request:"请检查输入：文字最多 200 字符，不能为空或包含控制字符。"};
+    const codes = {protected_admin:"管理员账号使用服务器密码文件，不能在此修改。",invalid_password:"新密码至少 12 个字符，最多 128 个 UTF-8 字节。",admin_required:"此操作仅限管理员。",invalid_invitation:"邀请码无效、已使用或已过期。",invalid_registration:"用户名需为字母开头的 3–32 位字母、数字或下划线，密码至少 12 位。",username_unavailable:"该用户名不可用，请换一个。",empty_room:"房间没有有效成员，请先添加设备。", idempotency_conflict:"重试标识对应的消息内容不同，请刷新页面并核对历史。", capacity_reached:"已达到存储或数量上限。", invalid_request:"请检查输入：文字最多 200 字符，不能为空或包含控制字符。"};
     throw new Error(codes[result.error] || messages[response.status] || "操作失败，请检查输入后重试。");
   }
   return result;
@@ -61,7 +62,7 @@ async function refresh() {
     $("devices").append(item);
   }
   await refreshRooms();
-  if(currentUser?.role==="admin") await refreshFirmware();
+  if(currentUser?.role==="admin") {await refreshFirmware();await refreshUsers();}
   await refreshInvitations();
   $("device-count").textContent=String(devices.filter(d=>d.revoked_at===null).length);
   $("room-count").textContent=String(roomRows.filter(r=>r.archived_at===null).length);
@@ -168,10 +169,11 @@ $("firmware-form").onsubmit=event=>{event.preventDefault();perform(event.submitt
 
 (async()=>{try {const identity=await api("auth/me"); loggedIn(true,identity); await refresh();} catch(error) {if(error.stale)return; loggedIn(false); if (!error.message.startsWith("登录")) status(error.message);}})();
 
-const viewLabels={overview:["概览","设备相连，消息随行。"],devices:["我的设备","让每一台设备，都有归属。"],rooms:["房间与消息","与朋友共享一个频道。"],invitations:["注册邀请码","邀请朋友注册 PocketLink。"],firmware:["固件管理","为设备带来新的能力。"]};
+const viewLabels={users:["用户管理","让每位用户的权限清晰可控。"],overview:["概览","设备相连，消息随行。"],devices:["我的设备","让每一台设备，都有归属。"],rooms:["房间与消息","与朋友共享一个频道。"],invitations:["注册邀请码","邀请朋友注册 PocketLink。"],firmware:["固件管理","为设备带来新的能力。"]};
 function showView(name){
- if((name==="firmware"||name==="invitations")&&currentUser?.role!=="admin")name="overview";
+ if((name==="firmware"||name==="invitations"||name==="users")&&currentUser?.role!=="admin")name="overview";
  if(name!=="rooms")globalThis.PocketVoice?.disconnect();
+ if(name!=="users")closeUserPassword();
  currentView=name;
  for(const key of Object.keys(viewLabels)){$("view-"+key).hidden=key!==name;$("nav-"+key).className="nav-item"+(key===name?" active":"");}
  $("page-name").textContent=viewLabels[name][0];$("page-title").textContent=viewLabels[name][1];
@@ -248,3 +250,40 @@ async function loadRoomUsers(room,epoch,owner){
  $("room-users").append(li);}
 }
 $("leave-room").onclick=()=>perform($("leave-room"),async()=>{if(!confirm("退出房间并移除自己的接收设备？"))return;await api("rooms/"+encodeURIComponent(selectedRoom())+"/users/"+encodeURIComponent(currentUser.id),"DELETE");await refreshRooms();status("已退出房间。");});
+
+function closeUserPassword(){passwordUser=null;$("user-password-form").reset();$("user-password-panel").hidden=true;}
+function clearUserManagement(){managedUsers=[];userListEpoch++;$("user-list").replaceChildren();$("user-summary").textContent="";$("user-search").value="";closeUserPassword();}
+async function refreshUsers(){if(currentUser?.role!=="admin")return;const epoch=++userListEpoch;const result=await api("users");if(epoch!==userListEpoch)return;managedUsers=result.users;renderUsers();}
+function renderUsers(){
+ const filter=$("user-search").value.trim().toLowerCase(),rows=managedUsers.filter(u=>u.username.includes(filter));$("user-list").replaceChildren();
+ $("user-summary").textContent=`共 ${managedUsers.length} 个账号 · ${managedUsers.filter(u=>u.disabled_at!==null).length} 个已禁用 · 当前显示 ${rows.length} 个`;
+ if(!rows.length){const empty=document.createElement("li");empty.textContent="没有符合条件的用户。";$("user-list").append(empty);return;}
+ for(const u of rows){
+  const li=document.createElement("li");li.className="user-card";const details=document.createElement("div");details.className="user-details";
+  const title=document.createElement("strong");title.textContent=u.username;const badge=document.createElement("span");badge.className="pill";badge.textContent=u.id==="admin"?"管理员":u.disabled_at===null?"正常":"已禁用";
+  const heading=document.createElement("div");heading.className="user-heading";heading.append(title,badge);
+  const info=document.createElement("p");info.className="muted";info.textContent=`注册：${u.created_at?new Date(u.created_at*1000).toLocaleString():"系统内置"} · 有效设备 ${u.device_count} · 自建有效房间 ${u.room_count}`;details.append(heading,info);li.append(details);
+  if(u.id==="admin"){const note=document.createElement("p");note.className="muted";note.textContent="密码由服务器文件配置，不可禁用或在此重置。";li.append(note);}
+  else{const actions=document.createElement("div");actions.className="user-actions";
+   for(const [label,action] of [[u.disabled_at===null?"禁用账号":"恢复账号",u.disabled_at===null?"disable":"enable"],["强制退出","logout"],["重置密码","password"]]){
+    const button=document.createElement("button");button.className=action==="disable"?"danger-quiet":"secondary compact";button.textContent=label;button.disabled=userActionBusy;
+    button.onclick=()=>{
+     if(userActionBusy)return;
+     if(action==="password"){passwordUser=u;$("user-password-form").reset();$("user-password-title").textContent="重置「"+u.username+"」的密码";$("user-password-panel").hidden=false;$("user-new-password").focus();return;}
+     const messages={disable:"禁用「"+u.username+"」？将退出其网页登录并阻止设备访问；未使用的配对码和邀请会失效，数据保留。",enable:"恢复「"+u.username+"」？用户可重新登录，原有效设备凭证恢复访问。",logout:"退出「"+u.username+"」的所有网页登录？用户仍可用原密码重新登录，设备不受影响。"};
+     if(!confirm(messages[action]))return;
+     userActionBusy=true;renderUsers();perform(button,async()=>{try{await api("users/"+encodeURIComponent(u.id)+"/"+action,"POST",{});await refreshUsers();status(label+"已完成。");}finally{userActionBusy=false;renderUsers();}});
+    };actions.append(button);
+   }li.append(actions);
+  }$("user-list").append(li);
+ }
+}
+$("user-search").oninput=renderUsers;
+$("refresh-users").onclick=()=>perform($("refresh-users"),refreshUsers);
+$("cancel-user-password").onclick=closeUserPassword;
+$("user-password-form").onsubmit=event=>{
+ event.preventDefault();if(!passwordUser||userActionBusy)return;const target=passwordUser;
+ const password=$("user-new-password").value;if([...password].length<12||new TextEncoder().encode(password).length>128){status("新密码至少 12 个字符，最多 128 个 UTF-8 字节。");return;}
+ if(!confirm("确认重置「"+target.username+"」的密码并退出其所有网页登录？"))return;
+ userActionBusy=true;renderUsers();perform(event.submitter,async()=>{try{await api("users/"+encodeURIComponent(target.id)+"/password","POST",{password});closeUserPassword();status("密码已重置，请私下告知用户。原网页登录已失效。");}finally{$("user-new-password").value="";userActionBusy=false;renderUsers();}});
+};

@@ -26,7 +26,6 @@ func (a *Auth) principal(r *http.Request) (store.User, bool) {
 		return store.User{}, false
 	}
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	now := time.Now()
 	for h, v := range a.sessions {
 		if !now.Before(v.Expires) {
@@ -34,9 +33,25 @@ func (a *Auth) principal(r *http.Request) (store.User, bool) {
 		}
 	}
 	v, ok := a.sessions[digest(c.Value)]
-	return v.User, ok
+	a.mu.Unlock()
+	if !ok {
+		return store.User{}, false
+	}
+	current, e := a.db.User(r.Context(), v.User.ID)
+	if e != nil || current.DisabledAt != nil || current.AuthVersion != v.User.AuthVersion {
+		a.mu.Lock()
+		delete(a.sessions, digest(c.Value))
+		a.mu.Unlock()
+		return store.User{}, false
+	}
+	return current, true
 }
 func (a *Auth) startSession(w http.ResponseWriter, r *http.Request, u store.User) {
+	current, e := a.db.User(r.Context(), u.ID)
+	if e != nil || current.DisabledAt != nil || current.AuthVersion != u.AuthVersion {
+		fail(w, 401, "invalid_credentials")
+		return
+	}
 	token := secret()
 	a.mu.Lock()
 	now := time.Now()

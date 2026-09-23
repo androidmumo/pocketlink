@@ -10,9 +10,9 @@ func (s *Store) VoiceIdentity(ctx context.Context, room, hash, user string) (str
 	var name string
 	var e error
 	if hash != "" {
-		e = s.db.QueryRowContext(ctx, `SELECT d.name FROM devices d JOIN room_members m ON m.device_id=d.id JOIN rooms r ON r.id=m.room_id WHERE d.credential_hash=? AND d.revoked_at IS NULL AND r.id=? AND r.archived_at IS NULL AND (d.owner_id='admin' OR d.owner_id=r.owner_id OR EXISTS(SELECT 1 FROM room_users u WHERE u.room_id=r.id AND u.user_id=d.owner_id))`, hash, room).Scan(&name)
+		e = s.db.QueryRowContext(ctx, `SELECT d.name FROM devices d JOIN room_members m ON m.device_id=d.id JOIN rooms r ON r.id=m.room_id WHERE d.credential_hash=? AND d.revoked_at IS NULL AND EXISTS(SELECT 1 FROM users enabled WHERE enabled.id=d.owner_id AND enabled.disabled_at IS NULL) AND r.id=? AND r.archived_at IS NULL AND (d.owner_id='admin' OR d.owner_id=r.owner_id OR EXISTS(SELECT 1 FROM room_users u WHERE u.room_id=r.id AND u.user_id=d.owner_id))`, hash, room).Scan(&name)
 	} else {
-		e = s.db.QueryRowContext(ctx, `SELECT u.username FROM users u JOIN rooms r ON r.id=? WHERE u.id=? AND r.archived_at IS NULL AND (u.id='admin' OR r.owner_id=u.id OR EXISTS(SELECT 1 FROM room_users m WHERE m.room_id=r.id AND m.user_id=u.id))`, room, user).Scan(&name)
+		e = s.db.QueryRowContext(ctx, `SELECT u.username FROM users u JOIN rooms r ON r.id=? WHERE u.id=? AND u.disabled_at IS NULL AND r.archived_at IS NULL AND (u.id='admin' OR r.owner_id=u.id OR EXISTS(SELECT 1 FROM room_users m WHERE m.room_id=r.id AND m.user_id=u.id))`, room, user).Scan(&name)
 	}
 	if errors.Is(e, sql.ErrNoRows) {
 		return "", ErrDenied

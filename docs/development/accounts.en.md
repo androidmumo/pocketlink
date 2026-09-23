@@ -66,3 +66,16 @@ A recovery key is automatically stored beside the database with the `.invitation
 ## Invitation entry points
 
 Registration invitations are administrator-only navigation. Room invitations live in the selected room’s Invite friends panel and only list that room’s codes. Create, Join and Invite share a prominent action area; forms expand on demand. Partners cannot issue invitations on behalf of the owner.
+
+## Administrator user management
+
+Administrators can open User management, search usernames and view registration time, account status, active device count and owned active room count. Counts do not indicate online users. Ordinary accounts cannot see the entry or access its APIs.
+
+- **Disable** ends existing web sessions, blocks login and device access, removes unused device pairing codes and revokes unused invitations. Devices, rooms, messages and memberships remain; other members can still use shared rooms. Voice connections close within about one second; text streams close at their next permission check. Messages already stored on offline devices cannot be remotely erased.
+- **Enable** restores login and valid device credentials, but does not restore old sessions, pairing codes or revoked invitations. Sign in or generate codes again.
+- **Force logout** invalidates existing browser sessions only. Users may sign in again with the current password; devices are unaffected.
+- **Reset password** accepts a new administrator-entered password of at least 12 characters and at most 128 UTF-8 bytes. Old passwords and web sessions stop working; device credentials remain. Passwords are never returned in user lists and the input is cleared after submission. Share the new password privately. Resetting a disabled account keeps it disabled.
+
+The built-in admin account cannot be managed through these actions and retains its server file password. Permanent deletion, username changes and role elevation are not provided.
+
+API: administrator `GET /api/v1/users` returns `{users:[{id,username,created_at,disabled_at,device_count,room_count}]}`. `POST /api/v1/users/{id}/disable`, `/enable`, `/logout` take `{}`; `POST /api/v1/users/{id}/password` takes `{password}`. Writes still require the exact Origin. Migration `007_user_management.sql` adds disable time and session version; existing accounts default to enabled. Administrator passwords stay outside the database. Back up the entire data directory and configuration before upgrading; older images cannot open the migrated database directly.

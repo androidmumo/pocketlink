@@ -28,7 +28,7 @@ GitHub's automatic `Source code` archives are not firmware. Do not flash the OTA
 
 ## Available now
 
-- Invite registration with separate user devices and rooms.
+- Invite registration, administrator user management, and separate user devices and rooms.
 - Offline text delivery, sender/time display and paged reading.
 - Half-duplex room intercom for browsers and devices.
 - Battery, Beijing-time clock and signed OTA upgrades.

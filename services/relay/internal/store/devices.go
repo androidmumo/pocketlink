@@ -50,7 +50,7 @@ func (s *Store) ConsumePairing(ctx context.Context, codeHash, id, sn, credential
 	}
 	defer tx.Rollback()
 	var name, owner string
-	if err = tx.QueryRowContext(ctx, "SELECT name,owner_id FROM pairings WHERE code_hash=? AND expires_at>?", codeHash, now).Scan(&name, &owner); errors.Is(err, sql.ErrNoRows) {
+	if err = tx.QueryRowContext(ctx, "SELECT name,owner_id FROM pairings WHERE code_hash=? AND expires_at>? AND EXISTS(SELECT 1 FROM users u WHERE u.id=pairings.owner_id AND u.disabled_at IS NULL)", codeHash, now).Scan(&name, &owner); errors.Is(err, sql.ErrNoRows) {
 		return ErrDenied
 	} else if err != nil {
 		return err
@@ -88,7 +88,7 @@ func (s *Store) ConsumePairing(ctx context.Context, codeHash, id, sn, credential
 }
 func (s *Store) DeviceByCredential(ctx context.Context, hash string) (Device, error) {
 	var d Device
-	err := s.db.QueryRowContext(ctx, "SELECT id,sn,name,owner_id,created_at,revoked_at FROM devices WHERE credential_hash=? AND revoked_at IS NULL", hash).Scan(&d.ID, &d.SN, &d.Name, &d.OwnerID, &d.CreatedAt, &d.RevokedAt)
+	err := s.db.QueryRowContext(ctx, "SELECT id,sn,name,owner_id,created_at,revoked_at FROM devices WHERE credential_hash=? AND revoked_at IS NULL AND EXISTS(SELECT 1 FROM users u WHERE u.id=devices.owner_id AND u.disabled_at IS NULL)", hash).Scan(&d.ID, &d.SN, &d.Name, &d.OwnerID, &d.CreatedAt, &d.RevokedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return d, ErrDenied
 	}

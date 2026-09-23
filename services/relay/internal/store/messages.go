@@ -295,7 +295,7 @@ func (s *Store) Pending(ctx context.Context, hash string) ([]Message, error) {
 	rows, e := s.db.QueryContext(ctx, `SELECT m.id,m.room_id,m.request_id,m.body,m.created_at,m.sender_name FROM messages m
  JOIN receipts r ON r.message_id=m.id JOIN devices d ON d.id=r.device_id
  JOIN rooms room ON room.id=m.room_id JOIN room_members rm ON rm.room_id=m.room_id AND rm.device_id=d.id
- WHERE d.credential_hash=? AND d.revoked_at IS NULL AND room.archived_at IS NULL AND r.withdrawn_at IS NULL AND r.delivered_at IS NULL
+ WHERE d.credential_hash=? AND d.revoked_at IS NULL AND EXISTS(SELECT 1 FROM users enabled WHERE enabled.id=d.owner_id AND enabled.disabled_at IS NULL) AND room.archived_at IS NULL AND r.withdrawn_at IS NULL AND r.delivered_at IS NULL
  ORDER BY m.id LIMIT 20`, hash)
 	if e != nil {
 		return nil, e
@@ -309,7 +309,7 @@ func (s *Store) Acknowledge(ctx context.Context, hash string, id int64, state st
 	result, e := s.db.ExecContext(ctx, `UPDATE receipts SET delivered_at=COALESCE(delivered_at,?),read_at=CASE WHEN ?='read' THEN COALESCE(read_at,?) ELSE read_at END
  WHERE message_id=? AND withdrawn_at IS NULL AND device_id IN (SELECT d.id FROM devices d
  JOIN room_members rm ON rm.device_id=d.id JOIN messages m ON m.room_id=rm.room_id JOIN rooms room ON room.id=m.room_id
- WHERE d.credential_hash=? AND d.revoked_at IS NULL AND m.id=? AND room.archived_at IS NULL)`, now, state, now, id, hash, id)
+ WHERE d.credential_hash=? AND d.revoked_at IS NULL AND EXISTS(SELECT 1 FROM users enabled WHERE enabled.id=d.owner_id AND enabled.disabled_at IS NULL) AND m.id=? AND room.archived_at IS NULL)`, now, state, now, id, hash, id)
 	if e != nil {
 		return e
 	}
