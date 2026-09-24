@@ -47,3 +47,5 @@ html{touch-action:pan-x pan-y}input,textarea{font-size:16px}
 .user-list .user-card{display:flex;flex-direction:column;align-items:stretch;gap:12px}.user-details{min-width:0}.user-heading,.user-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.user-heading strong{overflow-wrap:anywhere}.user-details p{margin:8px 0 0}.user-actions button{margin:0}.user-list .user-card>p{margin:0}#user-password-panel{margin-top:20px}#user-new-password{max-width:520px}
 
 .user-heading .user-badge{display:inline-flex;align-items:center;flex:0 0 auto;width:auto;white-space:nowrap;font-size:11px;line-height:1.5;padding:3px 8px;border-radius:999px}.user-badge--admin{color:#1e40af;background:#dbeafe}.user-badge--enabled{color:#166534;background:#dcfce7}.user-badge--disabled{color:#991b1b;background:#fee2e2}
+
+.nav-item .nav-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 24px;width:24px;font-size:19px;line-height:1}

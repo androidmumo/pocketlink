@@ -2,6 +2,8 @@
 
 # Changelog
 
+- Align sidebar menu labels by giving each icon the same width.
+
 - Align the user-management navigation font and show compact blue administrator, green active and red disabled badges.
 
 - Add administrator user management: search, status/resource counts, disable/enable, force logout and password reset. Disabled accounts lose device access; the administrator account is protected.
