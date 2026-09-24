@@ -44,11 +44,11 @@ P2 在根据转发头做安全判断前，必须定义可信代理。
 私有 GHCR 包拉取可能需要登录。注册表和服务器凭证不得进入 Git 或日志。
 GITHUB_TOKEN 发布权限与生产拉取权限不同。CI 不更新生产。
 
-## 当前体验环境（2026-09-21 升级并复核）
+## 当前体验环境（2026-09-24 升级并复核）
 
 - 地址：`https://pocketlink.mcloc.cn`，1Panel 代理到 `127.0.0.1:3002`。
-- 应用版本：`1243e27b688d8e2a3b991d1b97d31269e300080a`。
-- 镜像：`ghcr.io/androidmumo/pocketlink-relay@sha256:ff711150690689b0bab273894ce2b8bece6e3fa4e4b9bb12fcabb226f1f93908`。
+- 应用版本：`f41daddd23ffc3371fa53ca561e65fcf959b489d`。
+- 镜像：`ghcr.io/androidmumo/pocketlink-relay@sha256:70f5ba21e2b985414caf92533a7205d000d7f60a7e992ffea7ed2970741f0641`。
 - 生效配置：`/opt/pocketlink/compose.yaml`、`compose.auth.yaml` 和 `.env`。
 - 所有持久化文件位于 `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`：
   `data/` 为 SQLite，`secrets/admin_password` 为管理密码，`backups/` 为一致性备份。
