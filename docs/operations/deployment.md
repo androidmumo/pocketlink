@@ -102,3 +102,7 @@ WebSocket 收信、重连补发和回执已通过主机与 CI 测试；真实代
 ## 用户管理样式修复（2026-09-23）
 
 部署 `1243e27`：统一侧栏字号，管理员、正常、已禁用使用紧凑的蓝、绿、红标签。桌面与手机浏览器检查、用户管理操作回归、完整静态检查和 CI [35854733820](https://github.com/androidmumo/pocketlink/actions/runs/35854733820) 通过。部署前备份 `backups/before-user-badges-20260923T113810Z.tar.gz` 并验证 SQLite 完整性；数据库仍为迁移 007。线上登录、用户列表、WSS 握手和资源哈希通过，其他容器未重启。固件未更新。
+
+## 侧栏菜单对齐（2026-09-24）
+
+部署 `f41dadd`：六个菜单图标统一宽度，文字左边界一致。桌面浏览器实测六个标签均从同一位置开始，手机导航间距一致；完整静态检查和 CI [35940663108](https://github.com/androidmumo/pocketlink/actions/runs/35940663108) 通过。备份 `backups/before-sidebar-alignment-20260924T010515Z.tar.gz` 通过 SQLite 完整性检查；数据库仍为迁移 007。线上登录、用户列表、WSS 握手和资源哈希通过，其他容器未重启。固件未更新。

@@ -55,11 +55,11 @@ GHCR can require a registry login for private packages. Do not put registry or
 server credentials in the repository or logs. Publishing via GITHUB_TOKEN and
 production pulling are distinct permissions. CI performs no production updates.
 
-## Current trial environment (upgraded and verified 2026-09-21)
+## Current trial environment (upgraded and verified 2026-09-24)
 
 - URL: `https://pocketlink.mcloc.cn`, proxied by 1Panel to `127.0.0.1:3002`.
-- Application commit: `1243e27b688d8e2a3b991d1b97d31269e300080a`.
-- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:ff711150690689b0bab273894ce2b8bece6e3fa4e4b9bb12fcabb226f1f93908`.
+- Application commit: `f41daddd23ffc3371fa53ca561e65fcf959b489d`.
+- Image: `ghcr.io/androidmumo/pocketlink-relay@sha256:70f5ba21e2b985414caf92533a7205d000d7f60a7e992ffea7ed2970741f0641`.
 - Active configuration: `/opt/pocketlink/compose.yaml`, `compose.auth.yaml` and `.env`.
 - Persistent files live under `/opt/1panel/www/sites/pocketlink.mcloc.cn/index/pocketlink/`:
   `data/` holds SQLite, `secrets/admin_password` the administrator secret and `backups/` consistent backups.
@@ -116,3 +116,7 @@ Administrators can search users, inspect registration dates and active device/ow
 ## User management style fix (2026-09-23)
 
 Deployed `1243e27`: align sidebar text and show compact blue administrator, green active and red disabled badges. Desktop/mobile browser checks, user-management regression, the complete static gate and CI [35854733820](https://github.com/androidmumo/pocketlink/actions/runs/35854733820) passed. Backup `backups/before-user-badges-20260923T113810Z.tar.gz` was checked for SQLite integrity before deployment; the database remains at migration 007. Production login, user listing, WSS handshake and asset hashes passed; other containers were not restarted. Firmware is unchanged.
+
+## Sidebar menu alignment (2026-09-24)
+
+Deployed `f41dadd`: give all six menu icons equal width so their labels start at the same position. Desktop browser measurements confirmed identical label positions, and mobile icon spacing is consistent; the complete static gate and CI [35940663108](https://github.com/androidmumo/pocketlink/actions/runs/35940663108) passed. Backup `backups/before-sidebar-alignment-20260924T010515Z.tar.gz` passed SQLite integrity verification; the database remains at migration 007. Production login, user listing, WSS handshake and asset hashes passed; other containers were not restarted. Firmware is unchanged.

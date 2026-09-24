@@ -43,7 +43,7 @@ Continue in the same terminal:
 
 ```bash
 cat > /opt/pocketlink/.env <<ENV
-POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:ff711150690689b0bab273894ce2b8bece6e3fa4e4b9bb12fcabb226f1f93908
+POCKETLINK_IMAGE=ghcr.io/androidmumo/pocketlink-relay@sha256:70f5ba21e2b985414caf92533a7205d000d7f60a7e992ffea7ed2970741f0641
 POCKETLINK_PUBLIC_ORIGIN=https://$DOMAIN
 POCKETLINK_HTTP_PORT=3002
 POCKETLINK_STORAGE_ROOT=$STORAGE
